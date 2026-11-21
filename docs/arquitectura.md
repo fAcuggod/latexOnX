@@ -25,7 +25,7 @@ src/core/      (Núcleo 100% puro: parser y validador, cero dependencias externa
 ## 2. Flujo completo de un tweet (de texto plano a fórmula en pantalla)
 
 1. **Detección de cambios en el timeline (`src/content/observer.ts`):**
-   - Un `MutationObserver` vigila `document.body` (`childList: true, subtree: true`) para capturar tweets nuevos al hacer scroll infinito.
+   - Un `MutationObserver` vigila `document.body` (`childList: true, subtree: true, characterData: true`) para capturar tanto tweets nuevos al hacer scroll infinito como inserciones parciales de React dentro de un `[data-testid="tweetText"]` existente (resolviendo su ancestro con `closest()`).
    - Ignora nodos inyectados por la propia extensión (`data-latex-on-x="rendered"` / `.katex`) para no provocar ciclos infinitos.
    - Acumula nodos añadidos en un `Set` y los procesa en un **único lote dentro de `requestAnimationFrame`**, evitando degradar los 60–120 FPS de X.
 
@@ -46,6 +46,7 @@ src/core/      (Núcleo 100% puro: parser y validador, cero dependencias externa
 
 5. **Renderizado con KaTeX (`src/renderer/katexRenderer.ts`):**
    - Segunda capa de seguridad (*defense in depth*): `trust: false`, `maxSize: 10`, `maxExpand: 100`.
+   - **Compatible con Trusted Types CSP en `x.com`:** usa `katex.render()` (`renderFormulaToElement`), que crea nodos DOM reales con `createElement`/`appendChild` y **cero `.innerHTML`**, evitando el bloqueo `TrustedHTML` de X.
    - **Accesibilidad:** `output: "htmlAndMathml"` genera tanto el dibujo visual en HTML+CSS como `<math>` MathML nativo para lectores de pantalla.
    - **Degradación elegante:** si KaTeX detecta un error de sintaxis, `try/catch` captura la excepción y se conserva el texto original del tweet intacto.
    - **Anti-XSS:** el texto plano y las fórmulas rechazadas siempre se insertan con `document.createTextNode(...)`, jamás como HTML.

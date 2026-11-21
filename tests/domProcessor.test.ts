@@ -130,4 +130,42 @@ describe("domProcessor (Fase 4)", () => {
     expect(formula.classList.contains("latex-on-x-copied")).toBe(true);
     uninstall();
   });
+
+  it("funciona bajo política estricta de Trusted Types en x.com (sin usar .innerHTML)", () => {
+    const tweet = document.createElement("div");
+    tweet.setAttribute("data-testid", "tweetText");
+    const span = document.createElement("span");
+    span.textContent = "\\(e^x + 5\\)";
+    tweet.appendChild(span);
+    document.body.appendChild(tweet);
+
+    // Simulamos la política Trusted Types de x.com que bloquea cualquier asignación a .innerHTML
+    const innerHtmlDescriptor = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      "innerHTML"
+    );
+    const spySetter = vi.fn(() => {
+      throw new TypeError(
+        "Failed to set the 'innerHTML' property on 'Element': This document requires 'TrustedHTML' assignment."
+      );
+    });
+    Object.defineProperty(Element.prototype, "innerHTML", {
+      configurable: true,
+      get: innerHtmlDescriptor?.get,
+      set: spySetter,
+    });
+
+    try {
+      expect(processTweetElement(tweet)).toBe(1);
+      expect(spySetter).not.toHaveBeenCalled();
+      const rendered = tweet.querySelector('[data-latex-on-x="rendered"]');
+      expect(rendered).not.toBeNull();
+      expect(rendered?.getAttribute("data-latex")).toBe("e^x + 5");
+      expect(rendered?.querySelector(".katex")).not.toBeNull();
+    } finally {
+      if (innerHtmlDescriptor) {
+        Object.defineProperty(Element.prototype, "innerHTML", innerHtmlDescriptor);
+      }
+    }
+  });
 });

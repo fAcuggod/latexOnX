@@ -98,7 +98,7 @@ latexOnX/
 │   └── demo/            # Sandbox web interactivo con KaTeX real
 ├── public/              # manifest.json (MV3) e íconos (16/48/128 px + SVG)
 ├── scripts/build.mjs    # Empaquetado transparente con esbuild + fuentes .woff2
-├── tests/               # 37 tests automatizados (Vitest + happy-dom)
+├── tests/               # 40 tests automatizados (Vitest + happy-dom)
 └── docs/                # Documentación de arquitectura y guía de TypeScript
 ```
 
@@ -110,7 +110,7 @@ Más detalles técnicos en [docs/arquitectura.md](docs/arquitectura.md).
 
 ```bash
 npm run typecheck   # Verifica tipos estrictos con TypeScript (tsc --noEmit)
-npm test            # Ejecuta los 37 tests unitarios y de DOM (Vitest + happy-dom)
+npm test            # Ejecuta los 40 tests unitarios y de DOM (Vitest + happy-dom)
 npm run test:watch  # Modo watch para TDD
 npm run build       # Compila la extensión Chrome MV3 en dist/
 npm run build:demo  # Compila el sandbox local con KaTeX real en dist-demo/

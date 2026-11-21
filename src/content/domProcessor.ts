@@ -1,4 +1,5 @@
-import { renderTweetText } from "../renderer/katexRenderer.js";
+import { parseMathSegments } from "../core/parser.js";
+import { renderFormulaToElement } from "../renderer/katexRenderer.js";
 
 export const TWEET_TEXT_SELECTOR = '[data-testid="tweetText"]';
 export const RENDERED_ATTR = "data-latex-on-x";
@@ -56,7 +57,8 @@ function shouldSkipNode(node: Node, boundary: Element): boolean {
 /**
  * Recorre de forma segura un contenedor de texto de tweet (`[data-testid="tweetText"]`),
  * reemplaza las fórmulas válidas usando un único `DocumentFragment` por nodo de texto
- * y deja intactos los enlaces, menciones, hashtags, emojis y texto normal.
+ * sin usar `.innerHTML` (100% compatible con Trusted Types CSP en x.com) y deja intactos
+ * los enlaces, menciones, hashtags, emojis y texto normal.
  *
  * Es idempotente: ejecutarla varias veces sobre el mismo tweet no duplica fórmulas.
  * Devuelve la cantidad de fórmulas renderizadas en esta pasada.
@@ -90,57 +92,69 @@ export function processTweetElement(root: Element): number {
     const parent = textNode.parentNode;
     if (!parent) continue;
 
-    const segments = renderTweetText(textNode.nodeValue ?? "");
-    const hasRenderedMath = segments.some((seg) => seg.type === "math");
-    if (!hasRenderedMath) continue;
+    const segments = parseMathSegments(textNode.nodeValue ?? "");
+    const hasMathCandidate = segments.some((seg) => seg.type === "math");
+    if (!hasMathCandidate) continue;
 
     const fragment = doc.createDocumentFragment();
+    let nodeRenderedCount = 0;
 
     for (const seg of segments) {
       if (seg.type === "text") {
         // TextNode puro: el navegador jamás interpreta HTML/scripts -> 100% seguro contra XSS
         fragment.appendChild(doc.createTextNode(seg.content));
-      } else if (seg.type === "rejected") {
-        // Degradación elegante: mostramos el texto original sin romper el tweet
-        fragment.appendChild(doc.createTextNode(seg.raw));
       } else {
         const wrapper = doc.createElement("span");
-        wrapper.className =
-          seg.mode === "display"
-            ? "latex-on-x-formula latex-on-x-display"
-            : "latex-on-x-formula latex-on-x-inline";
-        wrapper.setAttribute(RENDERED_ATTR, "rendered");
-        wrapper.setAttribute(LATEX_ATTR, seg.latex);
-        wrapper.setAttribute(RAW_ATTR, seg.raw);
-        wrapper.setAttribute("role", "button");
-        wrapper.setAttribute("tabindex", "0");
-        wrapper.setAttribute(
-          "title",
-          `Clic para copiar LaTeX: ${seg.latex}`
-        );
-        // Seguro: proviene exclusivamente de KaTeX con `trust: false` tras pasar `validateLatex`
-        wrapper.innerHTML = seg.html;
-        fragment.appendChild(wrapper);
-        renderedCount += 1;
+        // Renderizamos con katex.render() directo al DOM (sin .innerHTML -> compatible con Trusted Types)
+        const result = renderFormulaToElement(seg.content, seg.mode, wrapper);
+
+        if (!result.ok) {
+          // Degradación elegante: mostramos el texto original sin romper el tweet
+          fragment.appendChild(doc.createTextNode(seg.raw));
+        } else {
+          wrapper.className =
+            seg.mode === "display"
+              ? "latex-on-x-formula latex-on-x-display"
+              : "latex-on-x-formula latex-on-x-inline";
+          wrapper.setAttribute(RENDERED_ATTR, "rendered");
+          wrapper.setAttribute(LATEX_ATTR, seg.content);
+          wrapper.setAttribute(RAW_ATTR, seg.raw);
+          wrapper.setAttribute("role", "button");
+          wrapper.setAttribute("tabindex", "0");
+          wrapper.setAttribute(
+            "title",
+            `Clic para copiar LaTeX: ${seg.content}`
+          );
+          fragment.appendChild(wrapper);
+          nodeRenderedCount += 1;
+        }
       }
     }
 
-    parent.replaceChild(fragment, textNode);
+    if (nodeRenderedCount > 0) {
+      parent.replaceChild(fragment, textNode);
+      renderedCount += nodeRenderedCount;
+    }
   }
 
   return renderedCount;
 }
 
 /**
- * Procesa todos los tweets visibles dentro de `scope` (o `scope` mismo si es un tweetText).
+ * Procesa todos los tweets visibles dentro de `scope` (o el tweetText contenedor si `scope` está adentro).
  */
 export function processAllTweets(scope: ParentNode = document): number {
-  let total = 0;
-
-  if (scope instanceof Element && scope.matches(TWEET_TEXT_SELECTOR)) {
-    total += processTweetElement(scope);
+  if (scope instanceof Element) {
+    if (scope.matches(TWEET_TEXT_SELECTOR)) {
+      return processTweetElement(scope);
+    }
+    const ancestorTweet = scope.closest(TWEET_TEXT_SELECTOR);
+    if (ancestorTweet) {
+      return processTweetElement(ancestorTweet);
+    }
   }
 
+  let total = 0;
   const tweetNodes = scope.querySelectorAll(TWEET_TEXT_SELECTOR);
   for (const tweetNode of tweetNodes) {
     total += processTweetElement(tweetNode);

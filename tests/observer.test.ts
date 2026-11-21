@@ -54,4 +54,39 @@ describe("createTimelineObserver (Fase 4)", () => {
 
     expect(timeline.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(0);
   });
+
+  it("detecta spans insertados DENTRO de un tweetText ya existente (hidratación React)", async () => {
+    document.body.innerHTML = `<main id="timeline"><div data-testid="tweetText"></div></main>`;
+    const timeline = document.getElementById("timeline")!;
+    const tweetText = timeline.querySelector('[data-testid="tweetText"]')!;
+
+    const observer = createTimelineObserver();
+    observer.start(timeline);
+
+    // Simulamos React insertando el <span> después de montar el contenedor tweetText
+    const span = document.createElement("span");
+    span.textContent = "\\(e^x + 5\\)";
+    tweetText.appendChild(span);
+
+    await waitForFrame();
+
+    expect(tweetText.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(1);
+    observer.stop();
+  });
+
+  it("detecta mutaciones characterData dentro de un tweetText existente", async () => {
+    document.body.innerHTML = `<main id="timeline"><div data-testid="tweetText"><span>cargando...</span></div></main>`;
+    const timeline = document.getElementById("timeline")!;
+    const textNode = timeline.querySelector("span")!.firstChild as Text;
+
+    const observer = createTimelineObserver();
+    observer.start(timeline);
+
+    textNode.nodeValue = "Resultado: \\(e^x + 5\\)";
+
+    await waitForFrame();
+
+    expect(timeline.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(1);
+    observer.stop();
+  });
 });

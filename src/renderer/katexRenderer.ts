@@ -98,6 +98,56 @@ export function renderFormula(
   }
 }
 
+export type DomRenderResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: ValidationReason | "katex_error";
+      message: string;
+    };
+
+/**
+ * Valida una fórmula y la renderiza directamente como nodos DOM dentro de `target`
+ * usando `katex.render()` (construye nodos con `createElement`/`appendChild`, SIN `innerHTML`).
+ *
+ * Esto es fundamental en `x.com`, que aplica la política de seguridad Trusted Types
+ * (`require-trusted-types-for 'script'`) y bloquea asignaciones directas a `.innerHTML`.
+ */
+export function renderFormulaToElement(
+  latex: string,
+  mode: MathDisplayMode,
+  target: HTMLElement,
+  limits?: Partial<ValidationLimits>
+): DomRenderResult {
+  const validation = validateLatex(latex, limits);
+  if (!validation.ok) {
+    return {
+      ok: false,
+      reason: validation.reason,
+      message: validation.message,
+    };
+  }
+
+  try {
+    katex.render(latex, target, {
+      ...KATEX_SAFE_BASE_OPTIONS,
+      displayMode: mode === "display",
+    });
+    return { ok: true };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Error de sintaxis LaTeX al renderizar con KaTeX.";
+
+    return {
+      ok: false,
+      reason: "katex_error",
+      message,
+    };
+  }
+}
+
 /**
  * Pipeline completo de texto de tweet:
  *   texto plano -> parseMathSegments -> validateLatex -> KaTeX

@@ -43,10 +43,24 @@ function appendTweet(tweet: SampleTweet, prepend = false): void {
 
   const head = document.createElement("div");
   head.className = "tweet-head";
-  head.innerHTML = `<div class="avatar"></div><div><div class="author"></div><div class="handle"></div></div>`;
-  head.querySelector(".avatar")!.textContent = tweet.initials;
-  head.querySelector(".author")!.textContent = tweet.author;
-  head.querySelector(".handle")!.textContent = tweet.handle;
+
+  const avatar = document.createElement("div");
+  avatar.className = "avatar";
+  avatar.textContent = tweet.initials;
+
+  const meta = document.createElement("div");
+  const author = document.createElement("div");
+  author.className = "author";
+  author.textContent = tweet.author;
+
+  const handle = document.createElement("div");
+  handle.className = "handle";
+  handle.textContent = tweet.handle;
+
+  meta.appendChild(author);
+  meta.appendChild(handle);
+  head.appendChild(avatar);
+  head.appendChild(meta);
 
   const body = document.createElement("div");
   body.setAttribute("data-testid", "tweetText");
