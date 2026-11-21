@@ -1,40 +1,135 @@
-# LaTeX on X (`latexOnX`)
+<div align="center">
+  <img src="public/icons/icon.svg" alt="LaTeX on X logo" width="84" height="84" />
+  <h1>LaTeX on X</h1>
+  <p><strong>Renderizá fórmulas matemáticas en LaTeX directamente en X (<code>x.com</code>) en tiempo real usando KaTeX.</strong></p>
 
-Extensión de navegador para Chromium (Chrome, Brave, Edge, Arc) que detecta y renderiza fórmulas matemáticas en **LaTeX** dentro de `x.com` usando **KaTeX**, construida paso a paso con foco en arquitectura limpia y aprendizaje práctico.
+  <p>
+    <a href="https://github.com/fAcuggod/latexOnX/actions/workflows/ci.yml">
+      <img src="https://github.com/fAcuggod/latexOnX/actions/workflows/ci.yml/badge.svg" alt="CI" />
+    </a>
+    <img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript Strict" />
+    <img src="https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white" alt="Chrome Manifest V3" />
+    <img src="https://img.shields.io/badge/Renderer-KaTeX-329894" alt="KaTeX" />
+    <a href="LICENSE">
+      <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="MIT License" />
+    </a>
+  </p>
+</div>
 
-## Sintaxis soportada (sin colisiones con `$50` o `$BTC`)
+---
 
-- **En línea (`inline`):** `\(...\)` — ej. `Si \(a^2 + b^2 = c^2\) entonces...`
-- **En bloque (`display`):** `$$...$$` o `\[...\]` — ej. `$$E = mc^2$$`
+## ¿Por qué existe este proyecto?
 
-El símbolo `$` simple se ignora intencionalmente para no interferir con precios ni *cashtags* financieros en X.
+En **X** (`x.com`), compartir matemáticas suele implicar subir capturas borrosas o fórmulas en texto plano difíciles de leer. A diferencia de usar `$x^2$` (que colisiona con precios como `$50` y *cashtags* como `$BTC` o `$TSLA`), **LaTeX on X** adopta delimitadores seguros, valida cada expresión contra ataques DoS y renderiza las fórmulas en menos de 1 ms con **KaTeX** (HTML + MathML accesible).
 
-## Arquitectura: Núcleo Puro + Capa de Efectos
+### Características principales
 
-Separamos el proyecto en dos grandes capas (el mismo principio que en programación funcional separa funciones puras de `IO`):
+- **Sintaxis sin colisiones:** soporta `\(...\)` en línea y `$$...$$` / `\[...\]` en bloque, ignorando `$` simple (`$50`, `$BTC`, `$TSLA`).
+- **Rápida en scroll infinito:** *fast-path* para descartar tweets sin fórmulas al instante y `MutationObserver` agrupado con `requestAnimationFrame` para mantener 60–120 FPS.
+- **Segura por diseño:** defensa en profundidad contra DoS (límite de longitud, profundidad de llaves `{...}` y bloqueo de macros peligrosas como `\def`, `\let`, `\href`), `trust: false` en KaTeX y texto plano siempre en `TextNode` (anti-XSS).
+- **Compatible con los 3 temas de X:** se adapta automáticamente a modo **Claro**, **Noche clara (Dim)** y **Oscuro (Lights Out)**.
+- **Clic para copiar LaTeX:** hacé clic (o presioná Enter/Espacio) en cualquier fórmula renderizada para copiar su código LaTeX original.
+- **Activar / pausar al instante:** popup con interruptor On/Off que restaura el texto original sin recargar la pestaña y solicita solo el permiso mínimo (`storage`).
 
-```text
-src/
-├── core/        # Núcleo puro (sin DOM ni APIs del navegador): parser, tipos, validador
-├── renderer/    # (Fase 3) Puente con KaTeX (HTML + MathML accesible)
-└── content/     # (Fase 4) Capa del navegador: DOM de x.com y MutationObserver
-tests/           # Tests automatizados con Vitest
-```
+---
 
-## Roadmap de construcción
+## Sintaxis soportada
 
-- [x] **Fase 0 — Cimientos:** Configuración de TypeScript + Vitest, tipos algebraicos (`src/core/types.ts`) y suite de tests del parser.
-- [x] **Fase 1 — Reto #1 (Parser):** Implementar `parseMathSegments` en `src/core/parser.ts`.
-- [x] **Fase 2 — Reto #2 (Validador / Seguridad):** Proteger el renderizado contra fórmulas abusivas o ataques DoS (longitud máxima, profundidad de llaves `{...}`, comandos prohibidos).
-- [x] **Fase 3 — Motor KaTeX + Sandbox local:** Conectar el núcleo puro con KaTeX y probarlo visualmente en un simulador de tweets (modo claro y oscuro).
-- [ ] **Fase 4 — Extensión real en Chrome (Manifest V3):** Recorrido seguro del DOM de `x.com` + `MutationObserver` eficiente + empaquetado listo para cargar en `chrome://extensions`.
-- [ ] **Fase 5 — Mejoras extra:** Popup on/off, copiar LaTeX al hacer clic, vista previa en el compositor de tweets.
+| Modo | Sintaxis | Ejemplo |
+| :--- | :--- | :--- |
+| **En línea (`inline`)** | `\(...\)` | `La identidad \(e^{i\pi} + 1 = 0\) es clásica.` |
+| **En bloque (`display`)** | `$$...$$` | `$$\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}$$` |
+| **En bloque (`display`)** | `\[...\]` | `\[\int_0^1 x^2\,dx = \frac{1}{3}\]` |
+| **Texto ignorado** | `$` simple | `Compré $BTC a $50` *(intacto)* |
 
-## Comandos útiles
+---
+
+## Instalación en Chrome / Brave / Edge / Arc (1 minuto)
+
+> Requiere [Node.js 18+](https://nodejs.org/).
+
+1. **Cloná e instalá dependencias:**
+   ```bash
+   git clone https://github.com/fAcuggod/latexOnX.git
+   cd latexOnX
+   npm install
+   ```
+
+2. **Compilá la extensión:**
+   ```bash
+   npm run build
+   ```
+   Esto genera la extensión lista para cargar en la carpeta `dist/`.
+
+3. **Cargala en tu navegador Chromium:**
+   - Abrí `chrome://extensions` (o `brave://extensions`, `edge://extensions`).
+   - Activá el **Modo de desarrollador** (*Developer mode*) arriba a la derecha.
+   - Hacé clic en **Cargar descomprimida** (*Load unpacked*) y elegí la carpeta `dist/`.
+   - Abrí [x.com](https://x.com) y probá con cualquier tweet que incluya `\(x^2\)` o `$$E = mc^2$$`.
+
+### Probar el Sandbox local con KaTeX real (sin entrar a X)
 
 ```bash
-npm install         # Instala dependencias
-npm test            # Ejecuta los tests una vez
-npm run test:watch  # Ejecuta los tests automáticamente al guardar cambios
-npm run typecheck   # Verifica tipos de TypeScript
+npm run build:demo
 ```
+Luego abrí `dist-demo/index.html` en tu navegador (o servilo con `npx serve dist-demo`) para probar tweets en vivo en los 3 temas de X (**Claro**, **Noche clara** y **Oscuro**).
+
+---
+
+## Arquitectura
+
+El proyecto sigue el principio de **Núcleo Puro + Capa de Efectos** (*Functional Core, Imperative Shell*):
+
+```text
+latexOnX/
+├── src/
+│   ├── core/            # Núcleo 100% puro (sin DOM ni APIs del navegador)
+│   │   ├── types.ts     # Tipos algebraicos (uniones discriminadas)
+│   │   ├── parser.ts    # Scanner lineal sin pérdida para delimitadores seguros
+│   │   └── validator.ts # Validador anti-DoS (longitud, llaves, comandos prohibidos)
+│   ├── renderer/
+│   │   └── katexRenderer.ts # Pipeline seguro con KaTeX (HTML + MathML accesible)
+│   ├── content/         # Capa del navegador (Chrome Manifest V3)
+│   │   ├── domProcessor.ts  # TreeWalker seguro, DocumentFragment, restore y copy
+│   │   ├── observer.ts      # MutationObserver agrupado en requestAnimationFrame
+│   │   ├── index.ts         # Entrada del content script + sincronización On/Off
+│   │   └── styles.css       # Estilos adaptables a los temas de X
+│   ├── popup/           # Interfaz del popup On/Off de la extensión
+│   └── demo/            # Sandbox web interactivo con KaTeX real
+├── public/              # manifest.json (MV3) e íconos (16/48/128 px + SVG)
+├── scripts/build.mjs    # Empaquetado transparente con esbuild + fuentes .woff2
+├── tests/               # 37 tests automatizados (Vitest + happy-dom)
+└── docs/                # Documentación de arquitectura y guía de TypeScript
+```
+
+Más detalles técnicos en [docs/arquitectura.md](docs/arquitectura.md).
+
+---
+
+## Scripts de desarrollo
+
+```bash
+npm run typecheck   # Verifica tipos estrictos con TypeScript (tsc --noEmit)
+npm test            # Ejecuta los 37 tests unitarios y de DOM (Vitest + happy-dom)
+npm run test:watch  # Modo watch para TDD
+npm run build       # Compila la extensión Chrome MV3 en dist/
+npm run build:demo  # Compila el sandbox local con KaTeX real en dist-demo/
+npm run check       # Ejecuta typecheck + tests + build completo
+```
+
+---
+
+## Roadmap
+
+- [x] **Fase 0 — Cimientos:** TypeScript estricto + Vitest + tipos algebraicos.
+- [x] **Fase 1 — Parser de delimitadores:** `parseMathSegments` con invariante sin pérdida y cero colisiones con `$50`/`$BTC`.
+- [x] **Fase 2 — Validador de seguridad:** límites anti-DoS, balanceo de llaves con escapes y tokenización de comandos prohibidos.
+- [x] **Fase 3 — Motor KaTeX:** pipeline seguro con salida accesible `htmlAndMathml` y degradación elegante.
+- [x] **Fase 4 — Extensión Chrome MV3:** `TreeWalker`, `MutationObserver` con batching, popup On/Off, clic para copiar LaTeX y demo web.
+- [ ] **Próximas ideas (v0.2):** vista previa en vivo dentro del compositor de X y soporte para Firefox.
+
+---
+
+## Licencia
+
+Distribuido bajo licencia [MIT](LICENSE).
