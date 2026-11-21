@@ -1,0 +1,65 @@
+/* Integración visual de fórmulas KaTeX con los temas Claro, Noche clara y Oscuro de X */
+
+.latex-on-x-formula {
+  position: relative;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 140ms ease;
+}
+
+.latex-on-x-formula:hover,
+.latex-on-x-formula:focus-visible {
+  background-color: rgba(29, 155, 240, 0.14);
+  outline: none;
+}
+
+.latex-on-x-formula:focus-visible {
+  box-shadow: 0 0 0 2px rgba(29, 155, 240, 0.55);
+}
+
+.latex-on-x-inline {
+  display: inline-block;
+  padding: 0 2px;
+  vertical-align: baseline;
+}
+
+.latex-on-x-display {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0.45em 0;
+  padding: 0.25em 0.35em;
+  text-align: center;
+}
+
+.latex-on-x-display .katex-display {
+  margin: 0.15em 0;
+}
+
+.latex-on-x-formula .katex {
+  font-size: 1.05em;
+  color: inherit;
+}
+
+/* Micro-notificación visual al copiar el código LaTeX */
+.latex-on-x-copied::after {
+  content: "LaTeX copiado ✓";
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1d9bf0;
+  color: #ffffff;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}

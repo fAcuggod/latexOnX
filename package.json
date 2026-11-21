@@ -7,11 +7,17 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "node scripts/build.mjs",
+    "build:demo": "node scripts/build.mjs --demo",
+    "build:all": "node scripts/build.mjs --all",
+    "check": "npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
+    "@types/chrome": "^0.3.7",
     "@types/katex": "^0.16.8",
     "esbuild": "^0.28.2",
+    "happy-dom": "^21.0.4",
     "typescript": "^5.8.2",
     "vitest": "^3.1.1"
   },
