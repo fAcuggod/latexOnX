@@ -168,4 +168,29 @@ describe("domProcessor (Fase 4)", () => {
       }
     }
   });
+
+  it("funciona en el nuevo frontend de X usando <article> sin data-testid e ignorando .sr-only y botones", () => {
+    document.body.innerHTML = `
+      <main>
+        <div class="sr-only">∇ facu on X: "\\(e^x + 5\\)" / X</div>
+        <article>
+          <a href="/facugod0"><span>∇ facu</span></a>
+          <div><span>\\(e^x + 5\\)</span></div>
+          <time>2:26 AM · Nov 21, 2026</time>
+          <button><span>$$no-renderizar-en-boton$$</span></button>
+        </article>
+      </main>
+    `;
+
+    expect(processAllTweets(document)).toBe(1);
+    const rendered = document.querySelectorAll('[data-latex-on-x="rendered"]');
+    expect(rendered).toHaveLength(1);
+    expect(rendered[0].getAttribute("data-latex")).toBe("e^x + 5");
+
+    // El texto oculto .sr-only y el botón deben quedar intactos
+    expect(document.querySelector(".sr-only")?.querySelector(".katex")).toBeNull();
+    expect(document.querySelector("button")?.textContent).toBe(
+      "$$no-renderizar-en-boton$$"
+    );
+  });
 });

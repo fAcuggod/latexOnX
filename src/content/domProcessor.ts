@@ -1,7 +1,8 @@
 import { parseMathSegments } from "../core/parser.js";
 import { renderFormulaToElement } from "../renderer/katexRenderer.js";
 
-export const TWEET_TEXT_SELECTOR = '[data-testid="tweetText"]';
+export const TWEET_TEXT_SELECTOR =
+  '[data-testid="tweetText"], article, [role="article"]';
 export const RENDERED_ATTR = "data-latex-on-x";
 export const RAW_ATTR = "data-latex-raw";
 export const LATEX_ATTR = "data-latex";
@@ -16,6 +17,8 @@ const SKIPPED_TAGS = new Set([
   "INPUT",
   "NOSCRIPT",
   "BUTTON",
+  "TIME",
+  "SVG",
 ]);
 
 /**
@@ -29,7 +32,8 @@ export function mightContainMath(text: string): boolean {
 
 /**
  * Determina si un nodo de texto está dentro de un elemento que NO debemos tocar
- * (enlaces, menciones, hashtags, código, editores de texto o fórmulas ya renderizadas).
+ * (enlaces, botones, fechas, código, texto oculto para lectores de pantalla,
+ * editores de texto o fórmulas ya renderizadas).
  */
 function shouldSkipNode(node: Node, boundary: Element): boolean {
   let current: Node | null = node.parentNode;
@@ -42,8 +46,10 @@ function shouldSkipNode(node: Node, boundary: Element): boolean {
       }
       if (
         el.getAttribute("contenteditable") === "true" ||
+        el.getAttribute("aria-hidden") === "true" ||
         el.getAttribute(RENDERED_ATTR) === "rendered" ||
-        el.classList.contains("katex")
+        el.classList.contains("katex") ||
+        el.classList.contains("sr-only")
       ) {
         return true;
       }

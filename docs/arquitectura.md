@@ -25,13 +25,14 @@ src/core/      (Núcleo 100% puro: parser y validador, cero dependencias externa
 ## 2. Flujo completo de un tweet (de texto plano a fórmula en pantalla)
 
 1. **Detección de cambios en el timeline (`src/content/observer.ts`):**
-   - Un `MutationObserver` vigila `document.body` (`childList: true, subtree: true, characterData: true`) para capturar tanto tweets nuevos al hacer scroll infinito como inserciones parciales de React dentro de un `[data-testid="tweetText"]` existente (resolviendo su ancestro con `closest()`).
+   - Un `MutationObserver` vigila `document.body` (`childList: true, subtree: true, characterData: true`) para capturar tanto tweets nuevos al hacer scroll infinito como inserciones parciales de React dentro de un `<article>` o `[data-testid="tweetText"]` existente (resolviendo su ancestro con `closest()`).
    - Ignora nodos inyectados por la propia extensión (`data-latex-on-x="rendered"` / `.katex`) para no provocar ciclos infinitos.
    - Acumula nodos añadidos en un `Set` y los procesa en un **único lote dentro de `requestAnimationFrame`**, evitando degradar los 60–120 FPS de X.
 
 2. **Filtrado rápido y recorrido seguro del DOM (`src/content/domProcessor.ts`):**
+   - **Selectores semánticos resilientes:** apunta a `[data-testid="tweetText"], article, [role="article"]`, resistiendo migraciones de frontend donde X elimina atributos `data-testid` pero conserva la estructura semántica HTML5 (`<article>`).
    - **Fast-path (`mightContainMath`):** si un nodo de texto no contiene `$$`, `\(` ni `\[`, se descarta en $O(n)$ sin crear objetos ni invocar al parser. Para el ~99% de tweets sin matemáticas, el costo es prácticamente nulo.
-   - **`TreeWalker` seguro:** solo visita nodos de texto fuera de `<a>` (enlaces, `@menciones`, `#hashtags`), `<code>`, `<pre>`, `[contenteditable="true"]` (el compositor de tweets) y fórmulas ya renderizadas (idempotencia).
+   - **`TreeWalker` seguro:** solo visita nodos de texto fuera de `<a>` (enlaces, `@menciones`, `#hashtags`), `<button>`, `<time>`, `<code>`, `<pre>`, `.sr-only`, `[aria-hidden="true"]`, `[contenteditable="true"]` (el compositor de tweets) y fórmulas ya renderizadas (idempotencia).
    - **Recolección previa + `DocumentFragment`:** recolecta todos los nodos candidatos antes de mutar el árbol, y reemplaza cada nodo con un único `DocumentFragment` (1 solo *reflow* del navegador).
 
 3. **Análisis léxico (`src/core/parser.ts`):**
