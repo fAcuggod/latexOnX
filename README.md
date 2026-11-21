@@ -25,7 +25,7 @@ tests/           # Tests automatizados con Vitest
 
 - [x] **Fase 0 — Cimientos:** Configuración de TypeScript + Vitest, tipos algebraicos (`src/core/types.ts`) y suite de tests del parser.
 - [x] **Fase 1 — Reto #1 (Parser):** Implementar `parseMathSegments` en `src/core/parser.ts`.
-- [ ] **Fase 2 — Reto #2 (Validador / Seguridad):** Proteger el renderizado contra fórmulas abusivas o ataques DoS (longitud máxima, profundidad de llaves `{...}`, comandos prohibidos).
+- [x] **Fase 2 — Reto #2 (Validador / Seguridad):** Proteger el renderizado contra fórmulas abusivas o ataques DoS (longitud máxima, profundidad de llaves `{...}`, comandos prohibidos).
 - [ ] **Fase 3 — Motor KaTeX + Sandbox local:** Conectar el núcleo puro con KaTeX y probarlo visualmente en un simulador de tweets (modo claro y oscuro).
 - [ ] **Fase 4 — Extensión real en Chrome (Manifest V3):** Recorrido seguro del DOM de `x.com` + `MutationObserver` eficiente + empaquetado listo para cargar en `chrome://extensions`.
 - [ ] **Fase 5 — Mejoras extra:** Popup on/off, copiar LaTeX al hacer clic, vista previa en el compositor de tweets.

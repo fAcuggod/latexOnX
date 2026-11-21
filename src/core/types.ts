@@ -30,3 +30,25 @@ export type Segment =
       /** Subcadena original exacta del tweet, incluyendo los delimitadores. */
       raw: string;
     };
+
+/**
+ * Motivo codificado por el cual una fórmula fue rechazada por el validador.
+ */
+export type ValidationReason =
+  | "empty"
+  | "too_long"
+  | "too_deep"
+  | "unbalanced_braces"
+  | "forbidden_command";
+
+/**
+ * Resultado de validar una fórmula LaTeX antes de enviarla a KaTeX.
+ *
+ * Equivalente en Haskell a `Either ValidationError ()`:
+ * - `{ ok: true }` si la fórmula es segura y válida.
+ * - `{ ok: false, reason, message }` si viola alguna regla de seguridad.
+ */
+export type ValidationResult =
+  | { ok: true }
+  | { ok: false; reason: ValidationReason; message: string };
+
