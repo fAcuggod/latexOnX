@@ -11,13 +11,11 @@ export interface TimelineObserverController {
 }
 
 /**
- * Crea un observador de mutaciones optimizado para el scroll infinito y la
- * navegación SPA (React) de X.
+ * Creates a MutationObserver optimized for X's infinite scroll and React SPA navigation.
  *
- * En lugar de re-escanear toda la página en cada cambio del DOM, acumula los
- * nodos recién insertados o modificados en un `Set` y los procesa en un único
- * lote durante el próximo frame de animación (`requestAnimationFrame`),
- * evitando trabar el scroll a 60–120 FPS.
+ * Instead of rescanning the entire document on every DOM mutation, added or updated
+ * candidates are deduplicated in a `Set` and flushed once per animation frame
+ * (`requestAnimationFrame`), preserving 60-120 FPS scrolling.
  */
 export function createTimelineObserver(
   processScope: (scope: ParentNode) => number = processAllTweets
@@ -57,7 +55,7 @@ export function createTimelineObserver(
 
     if (!el) return false;
 
-    // Ignoramos nodos creados por nuestra propia extensión para no re-dispararnos
+    // Ignore mutations originating from our own rendered math nodes
     if (
       el.getAttribute(RENDERED_ATTR) === "rendered" ||
       el.closest(`[${RENDERED_ATTR}="rendered"]`) !== null ||
@@ -66,8 +64,8 @@ export function createTimelineObserver(
       return false;
     }
 
-    // Si React insertó un <span> o TextNode DENTRO de un tweetText existente,
-    // encolamos directamente el tweetText ancestro.
+    // If React inserts a child <span> or TextNode inside an existing post container,
+    // enqueue that enclosing post container directly.
     const ancestorTweet = el.closest(TWEET_TEXT_SELECTOR);
     if (ancestorTweet) {
       pendingRoots.add(ancestorTweet);
@@ -105,7 +103,7 @@ export function createTimelineObserver(
     start(target: Node = document.body): void {
       if (observer !== null || !target) return;
 
-      // Procesamos los tweets que ya estaban presentes al iniciar
+      // Process posts already mounted when the observer starts
       if (target instanceof Element || target instanceof Document) {
         processScope(target);
       }

@@ -1,4 +1,5 @@
 import { parseMathSegments } from "../core/parser.js";
+import { getMessages, type Locale } from "../i18n/messages.js";
 import { renderFormulaToElement } from "../renderer/katexRenderer.js";
 
 export const TWEET_TEXT_SELECTOR =
@@ -6,6 +7,7 @@ export const TWEET_TEXT_SELECTOR =
 export const RENDERED_ATTR = "data-latex-on-x";
 export const RAW_ATTR = "data-latex-raw";
 export const LATEX_ATTR = "data-latex";
+export const COPIED_LABEL_ATTR = "data-copied-label";
 
 const SKIPPED_TAGS = new Set([
   "A",
@@ -22,18 +24,18 @@ const SKIPPED_TAGS = new Set([
 ]);
 
 /**
- * Comprobación rápida O(n) sin asignaciones de memoria:
- * el 99% de los tweets no contienen delimitadores matemáticos, así que los
- * descartamos al instante para mantener el scroll a 60–120 FPS.
+ * Fast O(n) zero-allocation pre-check:
+ * ~99% of posts on X contain no math delimiters and are skipped immediately
+ * to preserve 60-120 FPS infinite scrolling.
  */
 export function mightContainMath(text: string): boolean {
   return text.includes("$$") || text.includes("\\(") || text.includes("\\[");
 }
 
 /**
- * Determina si un nodo de texto está dentro de un elemento que NO debemos tocar
- * (enlaces, botones, fechas, código, texto oculto para lectores de pantalla,
- * editores de texto o fórmulas ya renderizadas).
+ * Checks whether a text node sits inside an element we must never mutate
+ * (links, buttons, timestamps, code blocks, screen-reader-only labels,
+ * editable composers, or already-rendered formulas).
  */
 function shouldSkipNode(node: Node, boundary: Element): boolean {
   let current: Node | null = node.parentNode;
@@ -61,21 +63,26 @@ function shouldSkipNode(node: Node, boundary: Element): boolean {
 }
 
 /**
- * Recorre de forma segura un contenedor de texto de tweet (`[data-testid="tweetText"]`),
- * reemplaza las fórmulas válidas usando un único `DocumentFragment` por nodo de texto
- * sin usar `.innerHTML` (100% compatible con Trusted Types CSP en x.com) y deja intactos
- * los enlaces, menciones, hashtags, emojis y texto normal.
+ * Safely walks a post container, renders valid formulas via `katex.render()`
+ * inside a single `DocumentFragment` per text node (zero `.innerHTML`, fully
+ * compliant with x.com's Trusted Types CSP), and preserves links, mentions,
+ * hashtags, emojis, and plain text intact.
  *
- * Es idempotente: ejecutarla varias veces sobre el mismo tweet no duplica fórmulas.
- * Devuelve la cantidad de fórmulas renderizadas en esta pasada.
+ * Idempotent: running multiple times on the same element never duplicates math.
+ * Returns the number of newly rendered formulas.
  */
-export function processTweetElement(root: Element): number {
+export function processTweetElement(
+  root: Element,
+  locale: Locale = "en"
+): number {
   const doc = root.ownerDocument;
   if (!doc || root.getAttribute("contenteditable") === "true") {
     return 0;
   }
 
-  // 1. Recolectamos primero los nodos de texto candidatos (nunca mutar mientras camina TreeWalker)
+  const msg = getMessages(locale);
+
+  // 1. Collect candidate text nodes first (never mutate while TreeWalker traverses)
   const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const candidates: Text[] = [];
   let current = walker.nextNode();
@@ -91,7 +98,7 @@ export function processTweetElement(root: Element): number {
     current = walker.nextNode();
   }
 
-  // 2. Transformamos cada nodo candidato en un único DocumentFragment (1 solo reflow)
+  // 2. Replace each candidate node via a single off-screen DocumentFragment (1 reflow)
   let renderedCount = 0;
 
   for (const textNode of candidates) {
@@ -107,15 +114,15 @@ export function processTweetElement(root: Element): number {
 
     for (const seg of segments) {
       if (seg.type === "text") {
-        // TextNode puro: el navegador jamás interpreta HTML/scripts -> 100% seguro contra XSS
+        // Pure TextNode: browser never parses HTML/scripts -> XSS-safe
         fragment.appendChild(doc.createTextNode(seg.content));
       } else {
         const wrapper = doc.createElement("span");
-        // Renderizamos con katex.render() directo al DOM (sin .innerHTML -> compatible con Trusted Types)
+        // Render directly into DOM nodes via katex.render() (no .innerHTML -> Trusted Types safe)
         const result = renderFormulaToElement(seg.content, seg.mode, wrapper);
 
         if (!result.ok) {
-          // Degradación elegante: mostramos el texto original sin romper el tweet
+          // Graceful fallback: keep original raw text untouched
           fragment.appendChild(doc.createTextNode(seg.raw));
         } else {
           wrapper.className =
@@ -125,11 +132,12 @@ export function processTweetElement(root: Element): number {
           wrapper.setAttribute(RENDERED_ATTR, "rendered");
           wrapper.setAttribute(LATEX_ATTR, seg.content);
           wrapper.setAttribute(RAW_ATTR, seg.raw);
+          wrapper.setAttribute(COPIED_LABEL_ATTR, msg.copiedBadge);
           wrapper.setAttribute("role", "button");
           wrapper.setAttribute("tabindex", "0");
           wrapper.setAttribute(
             "title",
-            `Clic para copiar LaTeX: ${seg.content}`
+            `${msg.copyTooltipPrefix}: ${seg.content}`
           );
           fragment.appendChild(wrapper);
           nodeRenderedCount += 1;
@@ -147,31 +155,54 @@ export function processTweetElement(root: Element): number {
 }
 
 /**
- * Procesa todos los tweets visibles dentro de `scope` (o el tweetText contenedor si `scope` está adentro).
+ * Processes all visible posts inside `scope` (or the enclosing post container if `scope` is nested).
  */
-export function processAllTweets(scope: ParentNode = document): number {
+export function processAllTweets(
+  scope: ParentNode = document,
+  locale: Locale = "en"
+): number {
   if (scope instanceof Element) {
     if (scope.matches(TWEET_TEXT_SELECTOR)) {
-      return processTweetElement(scope);
+      return processTweetElement(scope, locale);
     }
     const ancestorTweet = scope.closest(TWEET_TEXT_SELECTOR);
     if (ancestorTweet) {
-      return processTweetElement(ancestorTweet);
+      return processTweetElement(ancestorTweet, locale);
     }
   }
 
   let total = 0;
   const tweetNodes = scope.querySelectorAll(TWEET_TEXT_SELECTOR);
   for (const tweetNode of tweetNodes) {
-    total += processTweetElement(tweetNode);
+    total += processTweetElement(tweetNode, locale);
   }
 
   return total;
 }
 
 /**
- * Restaura todas las fórmulas renderizadas a su texto LaTeX original (`data-latex-raw`).
- * Permite apagar la extensión desde el popup al instante sin recargar la página.
+ * Updates localized tooltip and copy-badge attributes on already-rendered formulas
+ * when the user switches languages from the popup.
+ */
+export function updateRenderedLabels(
+  locale: Locale,
+  scope: ParentNode = document
+): void {
+  const msg = getMessages(locale);
+  const renderedNodes = scope.querySelectorAll(
+    `[${RENDERED_ATTR}="rendered"]`
+  );
+
+  for (const node of renderedNodes) {
+    const latex = node.getAttribute(LATEX_ATTR) ?? "";
+    node.setAttribute(COPIED_LABEL_ATTR, msg.copiedBadge);
+    node.setAttribute("title", `${msg.copyTooltipPrefix}: ${latex}`);
+  }
+}
+
+/**
+ * Restores all rendered formulas back to their original raw LaTeX text (`data-latex-raw`).
+ * Enables instant On/Off toggling from the popup without reloading the tab.
  */
 export function restoreAllMath(scope: ParentNode = document): number {
   const renderedNodes = scope.querySelectorAll(
@@ -191,7 +222,7 @@ export function restoreAllMath(scope: ParentNode = document): number {
     restoredCount += 1;
   }
 
-  // Unimos TextNodes adyacentes para dejar el DOM exactamente como estaba antes
+  // Merge adjacent TextNodes to restore the DOM to its original structure
   for (const parent of touchedParents) {
     parent.normalize();
   }
@@ -200,9 +231,9 @@ export function restoreAllMath(scope: ParentNode = document): number {
 }
 
 /**
- * Instala UN único listener delegado en `doc` (en lugar de cientos de listeners por fórmula)
- * para copiar el código LaTeX original al portapapeles al hacer clic o presionar Enter/Espacio.
- * Devuelve una función de limpieza para desinstalar los listeners.
+ * Installs a single delegated listener on `doc` (instead of hundreds of per-formula listeners)
+ * to copy original LaTeX source to the clipboard on click or Enter/Space.
+ * Returns a cleanup function that removes the listeners.
  */
 export function installCopyHandler(doc: Document = document): () => void {
   const copyFromTarget = (target: EventTarget | null, event: Event): void => {
@@ -213,11 +244,11 @@ export function installCopyHandler(doc: Document = document): () => void {
     const latex = formulaEl.getAttribute(LATEX_ATTR);
     if (!latex) return;
 
-    // Evitamos que hacer clic en la fórmula abra el detalle del tweet en X
+    // Prevent clicking a formula from triggering X's post-navigation click handler
     event.stopPropagation();
 
     navigator.clipboard?.writeText(latex).catch(() => {
-      // Silencioso si el navegador bloquea el portapapeles
+      // Silently ignore if clipboard access is blocked
     });
 
     formulaEl.classList.add("latex-on-x-copied");

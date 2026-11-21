@@ -1,7 +1,7 @@
 import type { MathDisplayMode, Segment } from "./types.js";
 
 /**
- * Especificación de cada par de delimitadores que reconoce el parser.
+ * Opening/closing delimiter pair recognized by the scanner.
  */
 export interface DelimiterSpec {
   open: string;
@@ -10,8 +10,8 @@ export interface DelimiterSpec {
 }
 
 /**
- * Delimitadores soportados en orden de evaluación.
- * Nota: No incluimos `$` simple para evitar colisiones con precios ($50) o cashtags ($BTC).
+ * Supported math delimiters in evaluation order.
+ * Single `$` is intentionally excluded to avoid collisions with currency notation and cashtags.
  */
 export const DELIMITERS: readonly DelimiterSpec[] = [
   { open: "$$", close: "$$", mode: "display" },
@@ -20,9 +20,8 @@ export const DELIMITERS: readonly DelimiterSpec[] = [
 ];
 
 /**
- * Agrega un fragmento de texto plano a `segments`, fusionándolo con el último
- * segmento si ya era de tipo `"text"` (garantiza que no haya textos vacíos ni
- * dos segmentos `"text"` consecutivos).
+ * Appends a plain-text chunk to `segments`, merging with the previous `"text"`
+ * segment when adjacent (maintains non-empty and non-adjacent text invariants).
  */
 function pushText(segments: Segment[], chunk: string): void {
   if (chunk.length === 0) return;
@@ -36,19 +35,19 @@ function pushText(segments: Segment[], chunk: string): void {
 }
 
 /**
- * Divide el texto plano de un tweet en una lista ordenada de segmentos
- * (`Segment[]`), alternando texto normal (`type: "text"`) y fórmulas
- * matemáticas (`type: "math"`).
+ * Splits raw post text into an ordered list of `Segment`s alternating between
+ * plain text (`type: "text"`) and math expressions (`type: "math"`).
  *
- * Delimitadores válidos:
+ * Supported delimiters:
  * - `$$...$$` -> mode: "display"
  * - `\[...\]` -> mode: "display"
  * - `\(...\)` -> mode: "inline"
  *
- * Garantiza que:
- * - `$` simple (precios/cashtags) nunca se interpreta como fórmula.
- * - Delimitadores sin cierre o fórmulas vacías se conservan como texto literal.
- * - No se generan segmentos `"text"` vacíos ni consecutivos, y la salida es sin pérdida.
+ * Guarantees:
+ * - Single `$` (currency notation and cashtags) is never treated as math.
+ * - Unclosed delimiters and empty/whitespace-only formulas stay literal text.
+ * - Lossless round-trip: concatenating `text.content` / `math.raw` always
+ *   reconstructs the exact original string.
  */
 export function parseMathSegments(text: string): Segment[] {
   const segments: Segment[] = [];

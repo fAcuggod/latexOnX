@@ -1,0 +1,57 @@
+# Architecture & Engineering Decisions
+
+This document explains how each layer of **LaTeX on X** works and why key design decisions were made.
+
+---
+
+## 1. Layered Design: Functional Core, Imperative Shell
+
+The codebase strictly separates pure computation from browser/DOM side effects:
+
+```text
+src/content/   (Imperative shell: x.com DOM, MutationObserver, chrome.storage)
+     │
+     ▼
+src/renderer/  (KaTeX bridge: DOM tree rendering, HTML + MathML, graceful fallback)
+     │
+     ▼
+src/core/      (100% pure core: parser & security validator, zero external dependencies)
+```
+
+Because `src/core/` has no DOM or browser API dependencies, it is fast to test, easy to reason about, and completely insulated from frontend churn on `x.com`.
+
+---
+
+## 2. End-to-End Post Processing Pipeline
+
+1. **Timeline Observation (`src/content/observer.ts`):**
+   - A `MutationObserver` watches `document.body` (`childList: true, subtree: true, characterData: true`), capturing both infinite-scroll posts and React SPA hydration updates inside already-mounted `<article>` elements (resolving ancestors via `closest()`).
+   - Mutations created by our own rendered spans (`data-latex-on-x="rendered"` / `.katex`) are ignored to avoid feedback loops.
+   - Added/updated elements are deduplicated into a `Set` and flushed once per animation frame (`requestAnimationFrame`) to sustain 60–120 FPS scrolling.
+
+2. **Resilient DOM Traversal (`src/content/domProcessor.ts`):**
+   - **Semantic selectors:** targets `[data-testid="tweetText"], article, [role="article"]`. Unlike fragile internal `data-testid` attributes (which X removed during frontend rewrites), HTML5 `<article>` landmarks persist for accessibility.
+   - **Zero-allocation fast-path (`mightContainMath`):** posts without `$$`, `\(` or `\[` are skipped immediately in $O(n)$ with zero allocations.
+   - **Safe `TreeWalker`:** only processes text nodes outside `<a>`, `<button>`, `<time>`, `<code>`, `<pre>`, `<svg>`, `.sr-only`, `[aria-hidden="true"]`, `[contenteditable="true"]`, and already-rendered formulas (idempotency).
+   - **Collect-then-mutate + `DocumentFragment`:** collects candidate text nodes before mutating the tree, then replaces each node using a single off-screen `DocumentFragment` (one reflow).
+
+3. **Lexical Scanner (`src/core/parser.ts`):**
+   - Linear scanner using half-open `[start, end)` slicing and explicit delimiters (`$$...$$`, `\[...\]`, `\(...\)`) to avoid collisions with currency notation and cashtags.
+   - Enforces a **lossless round-trip invariant**: concatenating `text.content` and `math.raw` always reconstructs the exact original string.
+
+4. **Anti-DoS Security Validator (`src/core/validator.ts`):**
+   - **Max length check first** (default 500 chars) to bound all downstream work.
+   - **Brace balance & nesting depth** (default 15 levels), handling escaped braces (`\{`, `\}`) and line breaks (`\\`).
+   - **Control-word tokenization** using two pointers (`i`, `j`) over ASCII letters so disallowed commands (`\def`, `\let`, `\newcommand`, `\href`, `\htmlStyle`, etc.) never falsely match legitimate shared-prefix symbols like `\leftarrow`.
+
+5. **Trusted-Types-Safe KaTeX Rendering (`src/renderer/katexRenderer.ts`):**
+   - Second defense-in-depth layer: `trust: false`, `maxSize: 10`, `maxExpand: 100`.
+   - **Zero `.innerHTML`:** `renderFormulaToElement` calls `katex.render()`, which builds DOM nodes directly via `createElement`/`appendChild`, complying with X's *Trusted Types* CSP (`require-trusted-types-for 'script'`).
+   - **Accessibility:** `output: "htmlAndMathml"` emits visual HTML+CSS alongside native `<math>` MathML for screen readers.
+   - **Graceful fallback & XSS safety:** syntax errors are caught and restored to literal `raw` text; all plain text is inserted via `document.createTextNode(...)`.
+
+6. **Chrome Manifest V3 & Internationalization (`public/`, `src/i18n/`, `scripts/build.mjs`):**
+   - **Least privilege:** requests only `"storage"` permission, restricts injection to `x.com` / `twitter.com`, and runs without a persistent background service worker.
+   - **Delegated copy handler:** a single global click/keyboard listener copies `data-latex` and displays a localized CSS badge via `attr(data-copied-label)`.
+   - **Optimized local fonts:** `scripts/build.mjs` strips legacy `.ttf`/`.woff` rules, bundling only `.woff2` (~250 KB vs ~1.3 MB) rewritten to `chrome-extension://__MSG_@@extension_id__/fonts/` in `web_accessible_resources`.
+   - **Multilingual support:** official Chrome `_locales/` (`en`, `es`, `zh_CN`) plus a live `EN | ES | 中文` switcher synced across tabs via `chrome.storage.sync`.

@@ -1,12 +1,12 @@
 import type { ValidationResult } from "./types.js";
 
 /**
- * Límites configurables para proteger el navegador contra fórmulas abusivas (DoS).
+ * Configurable safety bounds to protect the browser against pathological/DoS formulas.
  */
 export interface ValidationLimits {
-  /** Largo máximo permitido para una fórmula (en caracteres). */
+  /** Maximum allowed formula length in characters. */
   maxLength: number;
-  /** Profundidad máxima de anidamiento de llaves `{...}`. */
+  /** Maximum allowed `{...}` nesting depth. */
   maxBraceDepth: number;
 }
 
@@ -16,9 +16,9 @@ export const DEFAULT_VALIDATION_LIMITS: Readonly<ValidationLimits> = {
 };
 
 /**
- * Comandos de LaTeX/KaTeX prohibidos por seguridad (defensa en profundidad):
- * - Macros (`\def`, `\let`, `\newcommand`, ...) pueden causar expansión infinita.
- * - Enlaces/HTML (`\href`, `\url`, `\htmlStyle`, ...) podrían inyectar links o estilos maliciosos.
+ * Disallowed LaTeX/KaTeX commands (defense in depth):
+ * - Macro definitions (`\def`, `\let`, `\newcommand`, ...) can cause unbounded expansion.
+ * - Link/HTML commands (`\href`, `\url`, `\htmlStyle`, ...) could inject links or custom styles.
  */
 export const FORBIDDEN_COMMANDS: readonly string[] = [
   "\\def",
@@ -38,16 +38,13 @@ export const FORBIDDEN_COMMANDS: readonly string[] = [
 
 const FORBIDDEN_COMMAND_SET: ReadonlySet<string> = new Set(FORBIDDEN_COMMANDS);
 
-/**
- * Equivalente en TypeScript a `char.isascii() and char.isalpha()` en Python.
- */
 function isAsciiLetter(char: string): boolean {
   return (char >= "a" && char <= "z") || (char >= "A" && char <= "Z");
 }
 
 /**
- * Verifica que las llaves `{...}` estén balanceadas y no superen la profundidad máxima,
- * ignorando caracteres escapados tras `\` (`\{`, `\}`, `\\`).
+ * Verifies balanced `{...}` braces and enforces maximum nesting depth,
+ * skipping backslash-escaped pairs (`\{`, `\}`, `\\`).
  */
 function checkBraces(
   formula: string,
@@ -85,8 +82,9 @@ function checkBraces(
 }
 
 /**
- * Busca comandos LaTeX reales (`\` seguido de letras ASCII) y devuelve el primero
- * que aparezca en `FORBIDDEN_COMMAND_SET`, o `null` si todos son seguros.
+ * Tokenizes real LaTeX control words (`\` followed by ASCII letters) and returns
+ * the first command in `FORBIDDEN_COMMAND_SET`, or `null` if all commands are safe.
+ * Avoids false positives on shared prefixes such as `\let` vs `\leftarrow`.
  */
 function findForbiddenCommand(formula: string): string | null {
   let i = 0;
@@ -117,8 +115,8 @@ function findForbiddenCommand(formula: string): string | null {
 }
 
 /**
- * Valida una fórmula LaTeX antes de enviarla al motor de renderizado (KaTeX),
- * aplicando controles en orden: no vacía, longitud máxima, llaves y comandos prohibidos.
+ * Validates a LaTeX expression before passing it to KaTeX.
+ * Checks run in order: non-empty, max length, brace balance/depth, forbidden commands.
  */
 export function validateLatex(
   formula: string,
@@ -132,7 +130,7 @@ export function validateLatex(
     return {
       ok: false,
       reason: "empty",
-      message: "La fórmula está vacía.",
+      message: "Formula is empty.",
     };
   }
 
@@ -140,7 +138,7 @@ export function validateLatex(
     return {
       ok: false,
       reason: "too_long",
-      message: `La fórmula supera el máximo de ${maxLength} caracteres.`,
+      message: `Formula exceeds the maximum length of ${maxLength} characters.`,
     };
   }
 
@@ -151,8 +149,8 @@ export function validateLatex(
       reason: braceError,
       message:
         braceError === "too_deep"
-          ? `La fórmula supera la profundidad máxima de ${maxBraceDepth} llaves.`
-          : "La fórmula tiene llaves desbalanceadas.",
+          ? `Formula exceeds the maximum brace nesting depth of ${maxBraceDepth}.`
+          : "Formula contains unbalanced braces.",
     };
   }
 
@@ -161,7 +159,7 @@ export function validateLatex(
     return {
       ok: false,
       reason: "forbidden_command",
-      message: `La fórmula contiene el comando prohibido ${forbidden}.`,
+      message: `Formula contains disallowed command ${forbidden}.`,
     };
   }
 

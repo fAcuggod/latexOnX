@@ -10,11 +10,11 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-describe("createTimelineObserver (Fase 4)", () => {
-  it("procesa tweets existentes al iniciar y nuevos tweets agregados al hacer scroll", async () => {
+describe("createTimelineObserver", () => {
+  it("processes existing posts on start and newly appended posts during infinite scroll", async () => {
     document.body.innerHTML = `
       <main id="timeline">
-        <div data-testid="tweetText"><span>Inicial: \\(a + b\\)</span></div>
+        <article><span>Initial: \\(a + b\\)</span></article>
       </main>
     `;
 
@@ -25,10 +25,9 @@ describe("createTimelineObserver (Fase 4)", () => {
     expect(observer.isRunning()).toBe(true);
     expect(timeline.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(1);
 
-    // Simulamos scroll infinito: X inyecta un nuevo tweet en el DOM
-    const newTweet = document.createElement("article");
-    newTweet.innerHTML = `<div data-testid="tweetText"><span>Nuevo: $$\\frac{1}{2}$$</span></div>`;
-    timeline.appendChild(newTweet);
+    const newPost = document.createElement("article");
+    newPost.innerHTML = `<div><span>New: $$\\frac{1}{2}$$</span></div>`;
+    timeline.appendChild(newPost);
 
     await waitForFrame();
 
@@ -37,7 +36,7 @@ describe("createTimelineObserver (Fase 4)", () => {
     expect(observer.isRunning()).toBe(false);
   });
 
-  it("deja de procesar tweets nuevos después de llamar a stop()", async () => {
+  it("stops processing new posts after stop() is called", async () => {
     document.body.innerHTML = `<main id="timeline"></main>`;
     const timeline = document.getElementById("timeline")!;
 
@@ -45,44 +44,42 @@ describe("createTimelineObserver (Fase 4)", () => {
     observer.start(timeline);
     observer.stop();
 
-    const laterTweet = document.createElement("div");
-    laterTweet.setAttribute("data-testid", "tweetText");
-    laterTweet.textContent = "Pausado: $$x^2$$";
-    timeline.appendChild(laterTweet);
+    const laterPost = document.createElement("article");
+    laterPost.textContent = "Paused: $$x^2$$";
+    timeline.appendChild(laterPost);
 
     await waitForFrame();
 
     expect(timeline.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(0);
   });
 
-  it("detecta spans insertados DENTRO de un tweetText ya existente (hidratación React)", async () => {
-    document.body.innerHTML = `<main id="timeline"><div data-testid="tweetText"></div></main>`;
+  it("handles nested spans inserted inside an existing post container (React hydration)", async () => {
+    document.body.innerHTML = `<main id="timeline"><article></article></main>`;
     const timeline = document.getElementById("timeline")!;
-    const tweetText = timeline.querySelector('[data-testid="tweetText"]')!;
+    const article = timeline.querySelector("article")!;
 
     const observer = createTimelineObserver();
     observer.start(timeline);
 
-    // Simulamos React insertando el <span> después de montar el contenedor tweetText
     const span = document.createElement("span");
     span.textContent = "\\(e^x + 5\\)";
-    tweetText.appendChild(span);
+    article.appendChild(span);
 
     await waitForFrame();
 
-    expect(tweetText.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(1);
+    expect(article.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(1);
     observer.stop();
   });
 
-  it("detecta mutaciones characterData dentro de un tweetText existente", async () => {
-    document.body.innerHTML = `<main id="timeline"><div data-testid="tweetText"><span>cargando...</span></div></main>`;
+  it("handles characterData mutations inside an existing post container", async () => {
+    document.body.innerHTML = `<main id="timeline"><article><span>loading...</span></article></main>`;
     const timeline = document.getElementById("timeline")!;
     const textNode = timeline.querySelector("span")!.firstChild as Text;
 
     const observer = createTimelineObserver();
     observer.start(timeline);
 
-    textNode.nodeValue = "Resultado: \\(e^x + 5\\)";
+    textNode.nodeValue = "Result: \\(e^x + 5\\)";
 
     await waitForFrame();
 

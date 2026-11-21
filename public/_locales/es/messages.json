@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "LaTeX on X",
+    "description": "Nombre de la extensión"
+  },
+  "extDescription": {
+    "message": "Renderiza fórmulas matemáticas en LaTeX dentro de X (x.com) en tiempo real con KaTeX, sin colisiones con precios ni cashtags.",
+    "description": "Descripción de la extensión"
+  }
+}

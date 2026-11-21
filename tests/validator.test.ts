@@ -4,8 +4,8 @@ import {
   validateLatex,
 } from "../src/core/validator.js";
 
-describe("validateLatex (Reto #2)", () => {
-  it("acepta fórmulas matemáticas válidas habituales", () => {
+describe("validateLatex", () => {
+  it("accepts standard mathematical expressions", () => {
     const validFormulas = [
       "x^2 + 1",
       "E = mc^2",
@@ -19,7 +19,7 @@ describe("validateLatex (Reto #2)", () => {
     }
   });
 
-  it("rechaza fórmulas vacías o de solo espacios con reason 'empty'", () => {
+  it("rejects empty or whitespace-only formulas with reason 'empty'", () => {
     for (const empty of ["", "   ", "\n\t  "]) {
       const result = validateLatex(empty);
       expect(result.ok).toBe(false);
@@ -29,7 +29,7 @@ describe("validateLatex (Reto #2)", () => {
     }
   });
 
-  it("acepta exactamente el largo máximo y rechaza cuando lo supera ('too_long')", () => {
+  it("accepts exact max length and rejects longer formulas with 'too_long'", () => {
     const max = DEFAULT_VALIDATION_LIMITS.maxLength;
     expect(validateLatex("x".repeat(max))).toEqual({ ok: true });
 
@@ -40,7 +40,7 @@ describe("validateLatex (Reto #2)", () => {
     }
   });
 
-  it("rechaza llaves sin cerrar o cerradas de más ('unbalanced_braces')", () => {
+  it("rejects unbalanced braces with 'unbalanced_braces'", () => {
     const broken = [
       "\\frac{a}{b",
       "x}",
@@ -58,17 +58,13 @@ describe("validateLatex (Reto #2)", () => {
     }
   });
 
-  it("ignora llaves escapadas (\\{ y \\}) pero cuenta llaves reales tras \\\\", () => {
-    // Conjunto con llaves literales escapadas
+  it("ignores escaped braces (\\{ and \\}) while counting real braces after \\\\", () => {
     expect(validateLatex("\\{1, 2, 3\\}")).toEqual({ ok: true });
-    // Llave literal escapada sin par (ej. \left\{ ... \right.)
     expect(validateLatex("\\left\\{ x \\in \\mathbb{R} \\right.")).toEqual({
       ok: true,
     });
-    // Salto de línea \\ seguido de llaves reales balanceadas
     expect(validateLatex("a \\\\ {b}")).toEqual({ ok: true });
 
-    // Salto de línea \\ seguido de llave real SIN cerrar -> debe fallar
     const result = validateLatex("a \\\\ {b");
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -76,7 +72,7 @@ describe("validateLatex (Reto #2)", () => {
     }
   });
 
-  it("acepta profundidad máxima exacta y rechaza anidamiento excesivo ('too_deep')", () => {
+  it("accepts exact max brace depth and rejects deeper nesting with 'too_deep'", () => {
     const maxDepth = DEFAULT_VALIDATION_LIMITS.maxBraceDepth;
     const atLimit = "{".repeat(maxDepth) + "x" + "}".repeat(maxDepth);
     expect(validateLatex(atLimit)).toEqual({ ok: true });
@@ -90,7 +86,7 @@ describe("validateLatex (Reto #2)", () => {
     }
   });
 
-  it("rechaza comandos peligrosos como \\def, \\let, \\newcommand y \\href", () => {
+  it("rejects disallowed commands such as \\def, \\let, \\newcommand, and \\href", () => {
     const dangerous = [
       "\\def\\x{1} \\x",
       "\\gdef\\a{\\a}\\a",
@@ -110,13 +106,13 @@ describe("validateLatex (Reto #2)", () => {
     }
   });
 
-  it("no genera falsos positivos con comandos válidos que comparten prefijo (\\leftarrow) ni con \\\\def", () => {
+  it("avoids false positives on shared prefixes (\\leftarrow) and line breaks (\\\\def)", () => {
     expect(validateLatex("x \\leftarrow 0")).toEqual({ ok: true });
     expect(validateLatex("A \\leftrightarrow B")).toEqual({ ok: true });
     expect(validateLatex("a \\\\def b")).toEqual({ ok: true });
   });
 
-  it("respeta límites personalizados pasados por parámetro", () => {
+  it("respects custom limit overrides", () => {
     const tooLongCustom = validateLatex("x^2 + y^2", { maxLength: 5 });
     expect(tooLongCustom.ok).toBe(false);
     if (!tooLongCustom.ok) {

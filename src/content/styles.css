@@ -1,4 +1,4 @@
-/* Integración visual de fórmulas KaTeX con los temas Claro, Noche clara y Oscuro de X */
+/* Visual integration of KaTeX formulas with X's Light, Dim, and Lights Out themes */
 
 .latex-on-x-formula {
   position: relative;
@@ -43,9 +43,9 @@
   color: inherit;
 }
 
-/* Micro-notificación visual al copiar el código LaTeX */
+/* Localized micro-toast shown when copying LaTeX source */
 .latex-on-x-copied::after {
-  content: "LaTeX copiado ✓";
+  content: attr(data-copied-label);
   position: absolute;
   bottom: calc(100% + 4px);
   left: 50%;

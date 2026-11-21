@@ -1,20 +1,13 @@
 /**
- * Modo de presentación de una fórmula matemática:
- * - "inline": se muestra dentro del flujo normal de una oración, ej. \(x^2 + 1\)
- * - "display": se muestra destacada como bloque matemático, ej. $$...$$ o \[...\]
+ * Presentation mode for a mathematical formula:
+ * - "inline": rendered inline inside a sentence, e.g. \(x^2 + 1\)
+ * - "display": rendered as a centered block equation, e.g. $$...$$ or \[...\]
  */
 export type MathDisplayMode = "inline" | "display";
 
 /**
- * Representa un fragmento del texto de un tweet luego de analizarlo.
- *
- * Si venís de Haskell, esto es equivalente a un tipo de dato algebraico (ADT):
- *
- *   data Segment
- *     = TextSegment String
- *     | MathSegment MathDisplayMode String String
- *
- * En TypeScript se modela como una "unión discriminada" usando el campo `type`.
+ * A parsed slice of post text modeled as a discriminated union
+ * (equivalent to an Algebraic Data Type in Haskell/ML).
  */
 export type Segment =
   | {
@@ -23,16 +16,16 @@ export type Segment =
     }
   | {
       type: "math";
-      /** Código LaTeX limpio (sin delimitadores y sin espacios sobrantes en los bordes). */
+      /** Clean LaTeX source (delimiters stripped and trimmed). */
       content: string;
-      /** Modo de renderizado: en línea o en bloque. */
+      /** Inline or display block rendering mode. */
       mode: MathDisplayMode;
-      /** Subcadena original exacta del tweet, incluyendo los delimitadores. */
+      /** Exact original substring from the post, including delimiters. */
       raw: string;
     };
 
 /**
- * Motivo codificado por el cual una fórmula fue rechazada por el validador.
+ * Machine-readable reason why a formula was rejected by the security validator.
  */
 export type ValidationReason =
   | "empty"
@@ -42,13 +35,9 @@ export type ValidationReason =
   | "forbidden_command";
 
 /**
- * Resultado de validar una fórmula LaTeX antes de enviarla a KaTeX.
- *
- * Equivalente en Haskell a `Either ValidationError ()`:
- * - `{ ok: true }` si la fórmula es segura y válida.
- * - `{ ok: false, reason, message }` si viola alguna regla de seguridad.
+ * Outcome of validating a LaTeX expression before rendering with KaTeX
+ * (equivalent to `Either ValidationError ()`).
  */
 export type ValidationResult =
   | { ok: true }
   | { ok: false; reason: ValidationReason; message: string };
-

@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "LaTeX on X",
+    "description": "扩展名称"
+  },
+  "extDescription": {
+    "message": "使用 KaTeX 在 X (x.com) 上实时渲染 LaTeX 数学公式，避免与价格符号或金融标签冲突。",
+    "description": "扩展描述"
+  }
+}

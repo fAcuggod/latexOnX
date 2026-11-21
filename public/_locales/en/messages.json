@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "LaTeX on X",
+    "description": "Extension display name"
+  },
+  "extDescription": {
+    "message": "Render LaTeX math formulas on X (x.com) in real time with KaTeX, without colliding with currency notation or cashtags.",
+    "description": "Extension store and chrome://extensions description"
+  }
+}

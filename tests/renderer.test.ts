@@ -4,14 +4,14 @@ import {
   renderTweetText,
 } from "../src/renderer/katexRenderer.js";
 
-describe("katexRenderer (Fase 3)", () => {
-  it("renderiza fórmulas inline y display generando HTML + MathML accesible", () => {
+describe("katexRenderer", () => {
+  it("renders inline and display formulas to HTML + accessible MathML", () => {
     const result = renderTweetText(
-      "Si \\(x^2 + 1\\) es positivo, entonces $$E = mc^2$$"
+      "If \\(x^2 + 1\\) is positive, then $$E = mc^2$$"
     );
 
     expect(result).toHaveLength(4);
-    expect(result[0]).toEqual({ type: "text", content: "Si " });
+    expect(result[0]).toEqual({ type: "text", content: "If " });
 
     expect(result[1].type).toBe("math");
     if (result[1].type === "math") {
@@ -23,7 +23,7 @@ describe("katexRenderer (Fase 3)", () => {
       expect(result[1].html).not.toContain("katex-display");
     }
 
-    expect(result[2]).toEqual({ type: "text", content: " es positivo, entonces " });
+    expect(result[2]).toEqual({ type: "text", content: " is positive, then " });
 
     expect(result[3].type).toBe("math");
     if (result[3].type === "math") {
@@ -34,14 +34,14 @@ describe("katexRenderer (Fase 3)", () => {
     }
   });
 
-  it("no toca precios ni cashtags financieros ($50, $BTC)", () => {
-    const input = "Compré $BTC a $50 y subió a $100.";
+  it("leaves currency notation and cashtags untouched", () => {
+    const input = "Spent $50 on $BTC and sold at $100.";
     expect(renderTweetText(input)).toEqual([{ type: "text", content: input }]);
   });
 
-  it("rechaza fórmulas peligrosas ANTES de llegar a KaTeX y conserva raw", () => {
+  it("blocks disallowed formulas before calling KaTeX and preserves raw text", () => {
     const result = renderTweetText(
-      "Ataque: $$\\def\\a{\\a}\\a$$ y $$\\href{https://evil.example}{click}$$"
+      "Attack: $$\\def\\a{\\a}\\a$$ and $$\\href{https://evil.example}{click}$$"
     );
 
     expect(result[1].type).toBe("rejected");
@@ -57,7 +57,7 @@ describe("katexRenderer (Fase 3)", () => {
     }
   });
 
-  it("rechaza fórmulas con sintaxis LaTeX inválida como 'katex_error' sin lanzar excepción", () => {
+  it("degrades invalid LaTeX syntax to 'katex_error' without throwing", () => {
     const result = renderFormula("\\frac{1}", "display", "$$\\frac{1}$$");
 
     expect(result.type).toBe("rejected");
@@ -67,18 +67,18 @@ describe("katexRenderer (Fase 3)", () => {
     }
   });
 
-  it("mantiene texto malicioso HTML/XSS como segmento de texto plano sin interpretar", () => {
-    const input = "<script>alert('xss')</script> y \\(a + b\\)";
+  it("keeps potentially malicious HTML/XSS text as a plain text segment", () => {
+    const input = "<script>alert('xss')</script> and \\(a + b\\)";
     const result = renderTweetText(input);
 
     expect(result[0]).toEqual({
       type: "text",
-      content: "<script>alert('xss')</script> y ",
+      content: "<script>alert('xss')</script> and ",
     });
     expect(result[1].type).toBe("math");
   });
 
-  it("permite límites personalizados en renderTweetText", () => {
+  it("supports custom validation limits in renderTweetText", () => {
     const result = renderTweetText("$$x^2 + y^2$$", { maxLength: 4 });
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe("rejected");

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LaTeX on X — Demo con KaTeX real</title>
+  <title>LaTeX on X — Live KaTeX Sandbox</title>
   <link rel="stylesheet" href="katex.min.css" />
   <link rel="stylesheet" href="styles.css" />
   <style>
@@ -89,10 +89,10 @@
     }
     .author { font-weight: 700; font-size: 14px; }
     .handle { color: var(--muted); font-size: 13px; }
-    [data-testid="tweetText"] {
+    .post-body {
       font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
     }
-    [data-testid="tweetText"] a { color: var(--accent); text-decoration: none; }
+    .post-body a { color: var(--accent); text-decoration: none; }
   </style>
 </head>
 <body data-theme="dark">
@@ -101,23 +101,23 @@
       <div class="brand">
         <div class="logo">∑</div>
         <div>
-          <h1>LaTeX on X — Sandbox con KaTeX real</h1>
-          <p class="subtitle">Usa el mismo <code>domProcessor</code> y <code>MutationObserver</code> de la extensión</p>
+          <h1>LaTeX on X — Live KaTeX Sandbox</h1>
+          <p class="subtitle">Powered by the exact same <code>domProcessor</code> and <code>MutationObserver</code> used in the extension</p>
         </div>
       </div>
       <div class="themes">
-        <button class="btn" data-set-theme="light">Claro</button>
-        <button class="btn" data-set-theme="dim">Noche clara</button>
-        <button class="btn active" data-set-theme="dark">Oscuro</button>
+        <button class="btn" data-set-theme="light">Light</button>
+        <button class="btn" data-set-theme="dim">Dim</button>
+        <button class="btn active" data-set-theme="dark">Lights Out</button>
       </div>
     </header>
 
     <section class="composer">
-      <textarea id="composer-input">Probá escribir un tweet con \(e^{i\pi} + 1 = 0\), un precio como $50 o $BTC, y un bloque:
+      <textarea id="composer-input">Try writing a post with inline math \(e^{i\pi} + 1 = 0\) and a display equation:
 $$\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}$$</textarea>
       <div class="composer-footer">
-        <span>Clic en cualquier fórmula renderizada para copiar su LaTeX.</span>
-        <button id="publish-btn" class="publish-btn">Agregar tweet al feed</button>
+        <span>Click any rendered formula to copy its LaTeX source.</span>
+        <button id="publish-btn" class="publish-btn">Post to feed</button>
       </div>
     </section>
 

@@ -8,25 +8,24 @@ const DIST_DEMO = path.join(ROOT, "dist-demo");
 const KATEX_DIST = path.join(ROOT, "node_modules", "katex", "dist");
 
 /**
- * Optimiza katex.min.css para Chromium moderno:
- * 1. Elimina los fallbacks legacy `.woff` y `.ttf` (Chrome soporta `.woff2` nativamente),
- *    reduciendo el peso de fuentes de ~1.3 MB a ~250 KB.
- * 2. Reescribe `url(fonts/...)` según el destino (extensión MV3 o demo web).
+ * Optimizes katex.min.css for modern Chromium:
+ * 1. Strips legacy `.woff` and `.ttf` fallbacks (Chromium natively supports `.woff2`),
+ *    cutting font bundle size from ~1.3 MB down to ~250 KB.
+ * 2. Rewrites `url(fonts/...)` for the target context (MV3 extension or web demo).
  */
 async function writeOptimizedKatexCss(outFile, fontUrlPrefix) {
   const rawCss = await readFile(path.join(KATEX_DIST, "katex.min.css"), "utf8");
 
-  const woff2OnlyCss = rawCss
-    .replace(
-      /url\(fonts\/([^)]+\.woff2)\)\s*format\("woff2"\),url\(fonts\/[^)]+\.woff\)\s*format\("woff"\),url\(fonts\/[^)]+\.ttf\)\s*format\("truetype"\)/g,
-      `url("${fontUrlPrefix}$1") format("woff2")`
-    );
+  const woff2OnlyCss = rawCss.replace(
+    /url\(fonts\/([^)]+\.woff2)\)\s*format\("woff2"\),url\(fonts\/[^)]+\.woff\)\s*format\("woff"\),url\(fonts\/[^)]+\.ttf\)\s*format\("truetype"\)/g,
+    `url("${fontUrlPrefix}$1") format("woff2")`
+  );
 
   await writeFile(outFile, woff2OnlyCss, "utf8");
 }
 
 /**
- * Copia únicamente las fuentes `.woff2` de KaTeX al directorio indicado.
+ * Copies only KaTeX `.woff2` font files into `targetFontsDir`.
  */
 async function copyWoff2Fonts(targetFontsDir) {
   await mkdir(targetFontsDir, { recursive: true });
@@ -41,9 +40,9 @@ async function copyWoff2Fonts(targetFontsDir) {
 }
 
 /**
- * Empaqueta la extensión de Chrome (Manifest V3) en `dist/`.
- * Nota: Usamos formato `iife` porque los content scripts clásicos en Chrome MV3
- * no cargan módulos ES con `import` directamente desde `manifest.json`.
+ * Bundles the Chrome Manifest V3 extension into `dist/`.
+ * Uses `iife` output format because classic MV3 content scripts declared in
+ * `manifest.json` do not directly load ES module imports.
  */
 async function buildExtension() {
   await rm(DIST_EXT, { recursive: true, force: true });
@@ -61,25 +60,28 @@ async function buildExtension() {
     outdir: DIST_EXT,
   });
 
-  // Assets estáticos de la extensión
+  // Static extension assets and Chrome i18n locales
   await cp(path.join(ROOT, "public", "manifest.json"), path.join(DIST_EXT, "manifest.json"));
   await cp(path.join(ROOT, "public", "icons"), path.join(DIST_EXT, "icons"), { recursive: true });
+  await cp(path.join(ROOT, "public", "_locales"), path.join(DIST_EXT, "_locales"), {
+    recursive: true,
+  });
   await cp(path.join(ROOT, "src", "content", "styles.css"), path.join(DIST_EXT, "styles.css"));
   await cp(path.join(ROOT, "src", "popup", "popup.html"), path.join(DIST_EXT, "popup.html"));
   await cp(path.join(ROOT, "src", "popup", "popup.css"), path.join(DIST_EXT, "popup.css"));
 
-  // CSS y fuentes .woff2 de KaTeX accesibles desde x.com vía web_accessible_resources
+  // KaTeX stylesheet & .woff2 fonts exposed to x.com via web_accessible_resources
   await writeOptimizedKatexCss(
     path.join(DIST_EXT, "katex.min.css"),
     "chrome-extension://__MSG_@@extension_id__/fonts/"
   );
   await copyWoff2Fonts(path.join(DIST_EXT, "fonts"));
 
-  console.log("✓ Extensión Chrome MV3 compilada en dist/");
+  console.log("✓ Chrome MV3 extension built in dist/");
 }
 
 /**
- * Empaqueta la demo web interactiva con KaTeX real en `dist-demo/`.
+ * Bundles the interactive web demo with full KaTeX into `dist-demo/`.
  */
 async function buildDemo() {
   await rm(DIST_DEMO, { recursive: true, force: true });
@@ -99,7 +101,7 @@ async function buildDemo() {
   await writeOptimizedKatexCss(path.join(DIST_DEMO, "katex.min.css"), "fonts/");
   await copyWoff2Fonts(path.join(DIST_DEMO, "fonts"));
 
-  console.log("✓ Demo interactiva con KaTeX real compilada en dist-demo/");
+  console.log("✓ Interactive KaTeX demo built in dist-demo/");
 }
 
 const args = new Set(process.argv.slice(2));

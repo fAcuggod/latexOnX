@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,7 +13,7 @@
         <div class="logo" aria-hidden="true">∑</div>
         <div>
           <h1 class="title">LaTeX on X</h1>
-          <p class="subtitle">Fórmulas matemáticas en x.com</p>
+          <p id="subtitle" class="subtitle">Math formulas on x.com</p>
         </div>
       </div>
       <span class="version">v0.1</span>
@@ -21,25 +21,34 @@
 
     <section class="toggle-card">
       <div>
-        <div class="toggle-label">Renderizado automático</div>
-        <div id="status-text" class="status-text">Activo en x.com</div>
+        <div id="toggle-label" class="toggle-label">Auto-render</div>
+        <div id="status-text" class="status-text">Active on x.com</div>
       </div>
-      <label class="switch" aria-label="Activar o pausar LaTeX on X">
+      <label class="switch" aria-label="Toggle LaTeX on X">
         <input id="toggle-enabled" type="checkbox" checked />
         <span class="slider"></span>
       </label>
     </section>
 
     <section class="syntax-card">
-      <h2 class="section-title">Sintaxis soportada</h2>
+      <h2 id="syntax-title" class="section-title">Supported syntax</h2>
       <ul class="syntax-list">
-        <li><code>\(...\)</code> <span>En línea (inline)</span></li>
-        <li><code>$$...$$</code> <span>En bloque (display)</span></li>
-        <li><code>\[...\]</code> <span>En bloque (display)</span></li>
+        <li><code>\(...\)</code> <span id="mode-inline">Inline</span></li>
+        <li><code>$$...$$</code> <span id="mode-display-1">Display block</span></li>
+        <li><code>\[...\]</code> <span id="mode-display-2">Display block</span></li>
       </ul>
-      <p class="hint">
-        Precios (<code>$50</code>) y cashtags (<code>$BTC</code>) nunca se alteran. Hacé clic en cualquier fórmula para copiar su LaTeX.
+      <p id="hint-text" class="hint">
+        Currency notation and cashtags are never altered. Click any formula to copy its LaTeX source.
       </p>
+    </section>
+
+    <section class="lang-bar" aria-label="Language selector">
+      <span id="language-label" class="lang-label">Language</span>
+      <div class="lang-group" role="group" aria-label="Language">
+        <button type="button" class="lang-btn active" data-locale="en">EN</button>
+        <button type="button" class="lang-btn" data-locale="es">ES</button>
+        <button type="button" class="lang-btn" data-locale="zh">中文</button>
+      </div>
     </section>
 
     <footer class="footer">

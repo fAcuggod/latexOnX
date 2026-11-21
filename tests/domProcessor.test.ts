@@ -1,11 +1,13 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  COPIED_LABEL_ATTR,
   installCopyHandler,
   mightContainMath,
   processAllTweets,
   processTweetElement,
   restoreAllMath,
+  updateRenderedLabels,
 } from "../src/content/domProcessor.js";
 
 afterEach(() => {
@@ -13,23 +15,23 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("domProcessor (Fase 4)", () => {
-  it("descarta rápido tweets sin delimitadores mediante mightContainMath", () => {
-    expect(mightContainMath("Hola $BTC a $50")).toBe(false);
-    expect(mightContainMath("Texto normal sin fórmulas")).toBe(false);
-    expect(mightContainMath("Hola \\(x^2\\)")).toBe(true);
-    expect(mightContainMath("Bloque $$E=mc^2$$")).toBe(true);
-    expect(mightContainMath("Bloque \\[x\\]")).toBe(true);
+describe("domProcessor", () => {
+  it("fast-rejects posts without math delimiters via mightContainMath", () => {
+    expect(mightContainMath("Plain post with $BTC and $50")).toBe(false);
+    expect(mightContainMath("Regular text without math")).toBe(false);
+    expect(mightContainMath("Inline \\(x^2\\)")).toBe(true);
+    expect(mightContainMath("Display $$E=mc^2$$")).toBe(true);
+    expect(mightContainMath("Display \\[x\\]")).toBe(true);
   });
 
-  it("renderiza fórmulas dentro de tweetText preservando links, menciones y emojis", () => {
+  it("renders math inside tweetText while preserving links, mentions, and emojis", () => {
     document.body.innerHTML = `
       <div data-testid="tweetText">
-        <span>Mirá esto </span>
+        <span>Check this </span>
         <a href="/user">@euler</a>
-        <span>: \\(e^{i\\pi} + 1 = 0\\) y </span>
+        <span>: \\(e^{i\\pi} + 1 = 0\\) and </span>
         <img alt="🔥" src="emoji.png" />
-        <a href="/search">$$no-tocar-links$$</a>
+        <a href="/search">$$do-not-touch-links$$</a>
       </div>
     `;
 
@@ -42,15 +44,14 @@ describe("domProcessor (Fase 4)", () => {
     expect(rendered[0].getAttribute("data-latex")).toBe("e^{i\\pi} + 1 = 0");
     expect(rendered[0].querySelector(".katex")).not.toBeNull();
 
-    // Enlaces y emojis intactos
     const links = tweet.querySelectorAll("a");
     expect(links).toHaveLength(2);
     expect(links[0].textContent).toBe("@euler");
-    expect(links[1].textContent).toBe("$$no-tocar-links$$");
+    expect(links[1].textContent).toBe("$$do-not-touch-links$$");
     expect(tweet.querySelector("img")?.getAttribute("alt")).toBe("🔥");
   });
 
-  it("no toca editores contenteditable ni bloques <code>/<pre>", () => {
+  it("never mutates contenteditable composers or <code>/<pre> blocks", () => {
     document.body.innerHTML = `
       <div data-testid="tweetText" contenteditable="true"><span>$$x^2$$</span></div>
       <div data-testid="tweetText"><code>$$y^2$$</code><pre>\\(z^2\\)</pre></div>
@@ -60,9 +61,9 @@ describe("domProcessor (Fase 4)", () => {
     expect(document.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(0);
   });
 
-  it("es idempotente: procesarlo dos veces no duplica ni altera las fórmulas", () => {
+  it("is idempotent: running twice does not duplicate or alter formulas", () => {
     document.body.innerHTML = `
-      <div data-testid="tweetText"><span>Fórmula: $$a^2 + b^2 = c^2$$</span></div>
+      <div data-testid="tweetText"><span>Formula: $$a^2 + b^2 = c^2$$</span></div>
     `;
     const tweet = document.querySelector('[data-testid="tweetText"]')!;
 
@@ -73,22 +74,21 @@ describe("domProcessor (Fase 4)", () => {
     expect(tweet.innerHTML).toBe(htmlAfterFirst);
   });
 
-  it("mantiene seguro el texto malicioso (anti-XSS) como TextNode", () => {
+  it("keeps raw HTML/XSS payloads as inert TextNodes", () => {
     document.body.innerHTML = `<div data-testid="tweetText"><span></span></div>`;
     const span = document.querySelector("span")!;
-    span.textContent = `<img src="x" onerror="alert(1)"> y \\(x^2\\)`;
+    span.textContent = `<img src="x" onerror="alert(1)"> and \\(x^2\\)`;
 
     const tweet = document.querySelector('[data-testid="tweetText"]')!;
     expect(processTweetElement(tweet)).toBe(1);
 
-    // Nunca debe crearse un nodo <img> real a partir de texto plano
     expect(tweet.querySelector("img")).toBeNull();
     expect(tweet.textContent).toContain('<img src="x" onerror="alert(1)">');
   });
 
-  it("degrada elegantemente fórmulas bloqueadas por seguridad dejando el texto original", () => {
+  it("gracefully falls back to original text for security-rejected formulas", () => {
     document.body.innerHTML = `
-      <div data-testid="tweetText"><span>Test $$\\def\\a{\\a}\\a$$ y \\(x\\)</span></div>
+      <div data-testid="tweetText"><span>Test $$\\def\\a{\\a}\\a$$ and \\(x\\)</span></div>
     `;
     const tweet = document.querySelector('[data-testid="tweetText"]')!;
 
@@ -96,8 +96,8 @@ describe("domProcessor (Fase 4)", () => {
     expect(tweet.textContent).toContain("$$\\def\\a{\\a}\\a$$");
   });
 
-  it("restaura exactamente el texto original al llamar a restoreAllMath", () => {
-    const original = "Si \\(x^2\\) entonces $$E = mc^2$$ y $50";
+  it("restores exact original post text when restoreAllMath is called", () => {
+    const original = "If \\(x^2\\) then $$E = mc^2$$ and $50";
     document.body.innerHTML = `<div data-testid="tweetText"><span></span></div>`;
     const tweet = document.querySelector('[data-testid="tweetText"]')!;
     tweet.querySelector("span")!.textContent = original;
@@ -110,7 +110,7 @@ describe("domProcessor (Fase 4)", () => {
     expect(tweet.textContent).toBe(original);
   });
 
-  it("copia el LaTeX original al portapapeles al hacer clic en una fórmula", () => {
+  it("copies original LaTeX source on click and updates localized labels live", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText },
@@ -120,18 +120,22 @@ describe("domProcessor (Fase 4)", () => {
     document.body.innerHTML = `
       <div data-testid="tweetText"><span>$$E = mc^2$$</span></div>
     `;
-    processAllTweets(document);
+    processAllTweets(document, "en");
 
     const uninstall = installCopyHandler(document);
     const formula = document.querySelector('[data-latex-on-x="rendered"]') as HTMLElement;
-    formula.click();
+    expect(formula.getAttribute(COPIED_LABEL_ATTR)).toBe("LaTeX copied ✓");
 
+    updateRenderedLabels("zh", document);
+    expect(formula.getAttribute(COPIED_LABEL_ATTR)).toBe("已复制 LaTeX ✓");
+
+    formula.click();
     expect(writeText).toHaveBeenCalledWith("E = mc^2");
     expect(formula.classList.contains("latex-on-x-copied")).toBe(true);
     uninstall();
   });
 
-  it("funciona bajo política estricta de Trusted Types en x.com (sin usar .innerHTML)", () => {
+  it("complies with strict Trusted Types CSP on x.com (never assigns .innerHTML)", () => {
     const tweet = document.createElement("div");
     tweet.setAttribute("data-testid", "tweetText");
     const span = document.createElement("span");
@@ -139,7 +143,6 @@ describe("domProcessor (Fase 4)", () => {
     tweet.appendChild(span);
     document.body.appendChild(tweet);
 
-    // Simulamos la política Trusted Types de x.com que bloquea cualquier asignación a .innerHTML
     const innerHtmlDescriptor = Object.getOwnPropertyDescriptor(
       Element.prototype,
       "innerHTML"
@@ -169,15 +172,15 @@ describe("domProcessor (Fase 4)", () => {
     }
   });
 
-  it("funciona en el nuevo frontend de X usando <article> sin data-testid e ignorando .sr-only y botones", () => {
+  it("supports X's modern <article> DOM without data-testid while skipping .sr-only and buttons", () => {
     document.body.innerHTML = `
       <main>
-        <div class="sr-only">∇ facu on X: "\\(e^x + 5\\)" / X</div>
+        <div class="sr-only">user on X: "\\(e^x + 5\\)" / X</div>
         <article>
-          <a href="/facugod0"><span>∇ facu</span></a>
+          <a href="/user"><span>Author</span></a>
           <div><span>\\(e^x + 5\\)</span></div>
           <time>2:26 AM · Nov 21, 2026</time>
-          <button><span>$$no-renderizar-en-boton$$</span></button>
+          <button><span>$$do-not-render-in-button$$</span></button>
         </article>
       </main>
     `;
@@ -187,10 +190,9 @@ describe("domProcessor (Fase 4)", () => {
     expect(rendered).toHaveLength(1);
     expect(rendered[0].getAttribute("data-latex")).toBe("e^x + 5");
 
-    // El texto oculto .sr-only y el botón deben quedar intactos
     expect(document.querySelector(".sr-only")?.querySelector(".katex")).toBeNull();
     expect(document.querySelector("button")?.textContent).toBe(
-      "$$no-renderizar-en-boton$$"
+      "$$do-not-render-in-button$$"
     );
   });
 });
