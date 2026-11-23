@@ -107,3 +107,136 @@
   opacity: 1;
   background-color: rgba(113, 118, 123, 0.14);
 }
+
+/* Floating Live Composer Preview Panel (Light / Dim / Dark adaptive) */
+.latex-on-x-preview-panel {
+  position: fixed;
+  z-index: 99999;
+  border-radius: 14px;
+  border: 1px solid #2f3336;
+  background-color: #16181c;
+  color: #e7e9ea;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+}
+
+.latex-on-x-preview-panel[data-theme="dim"] {
+  background-color: #1e2732;
+  border-color: #38444d;
+  color: #f7f9f9;
+}
+
+.latex-on-x-preview-panel[data-theme="light"] {
+  background-color: #ffffff;
+  border-color: #cfd9de;
+  color: #0f1419;
+  box-shadow: 0 10px 28px rgba(15, 20, 25, 0.14);
+}
+
+.latex-on-x-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(113, 118, 123, 0.25);
+  font-size: 12px;
+}
+
+.latex-on-x-preview-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.latex-on-x-preview-title {
+  font-weight: 700;
+  color: #1d9bf0;
+  white-space: nowrap;
+}
+
+.latex-on-x-preview-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.latex-on-x-preview-badge.is-ok {
+  background-color: rgba(0, 186, 124, 0.14);
+  color: #00ba7c;
+}
+
+.latex-on-x-preview-badge.is-warning {
+  background-color: rgba(255, 173, 31, 0.16);
+  color: #ffad1f;
+}
+
+.latex-on-x-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.latex-on-x-preview-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.65;
+  font-size: 16px;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.latex-on-x-preview-close:hover {
+  opacity: 1;
+  background-color: rgba(113, 118, 123, 0.2);
+}
+
+.latex-on-x-preview-body {
+  padding: 10px 14px;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.latex-on-x-preview-error-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background-color: rgba(244, 33, 46, 0.14);
+  border-bottom: 1.5px dashed #f4212e;
+}
+
+.latex-on-x-preview-diagnostics {
+  list-style: none;
+  margin: 0;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(113, 118, 123, 0.25);
+  background-color: rgba(255, 173, 31, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: #ffad1f;
+}
+
+.latex-on-x-preview-panel[data-theme="light"] .latex-on-x-preview-diagnostics {
+  color: #b25c00;
+  background-color: rgba(255, 173, 31, 0.12);
+}
+

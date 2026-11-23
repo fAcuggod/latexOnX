@@ -1,3 +1,4 @@
+import { createComposerPreviewController } from "../content/composerOverlay.js";
 import { installInteractionHandlers } from "../content/domProcessor.js";
 import { createTimelineObserver } from "../content/observer.js";
 
@@ -92,10 +93,12 @@ function appendPost(post: SamplePost, prepend = false): void {
   }
 }
 
-// Uses the exact same MutationObserver and delegated interaction handlers as the real extension
+// Uses the exact same MutationObserver, composer preview, and interaction handlers as the real extension
 installInteractionHandlers(document);
 const observer = createTimelineObserver();
 observer.start(feedEl ?? document.body);
+const composerPreview = createComposerPreviewController(document);
+composerPreview.start();
 
 for (const post of INITIAL_POSTS) {
   appendPost(post);
@@ -121,5 +124,6 @@ document.querySelectorAll<HTMLButtonElement>("[data-set-theme]").forEach((btn) =
     document.body.setAttribute("data-theme", theme);
     document.querySelectorAll("[data-set-theme]").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
+    composerPreview.refresh();
   });
 });

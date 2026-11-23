@@ -3,6 +3,7 @@ import {
   normalizeLocale,
   type Locale,
 } from "../i18n/messages.js";
+import { createComposerPreviewController } from "./composerOverlay.js";
 import {
   installInteractionHandlers,
   processAllTweets,
@@ -16,11 +17,13 @@ import { createTimelineObserver } from "./observer.js";
 const STORAGE_KEY_ENABLED = "enabled";
 const STORAGE_KEY_CHEMISTRY = "enableChemistry";
 const STORAGE_KEY_BARE_BUTTON = "enableBareLatexButton";
+const STORAGE_KEY_COMPOSER_PREVIEW = "enableComposerPreview";
 const STORAGE_KEY_LOCALE = "locale";
 
 let currentEnabled = true;
 let currentChemistry = true;
 let currentBareButton = true;
+let currentComposerPreview = true;
 let currentLocale: Locale = detectDefaultLocale();
 
 function getProcessOptions(): ProcessOptions {
@@ -34,25 +37,34 @@ function getProcessOptions(): ProcessOptions {
 const observer = createTimelineObserver((scope) =>
   processAllTweets(scope, getProcessOptions())
 );
+
+const composerPreview = createComposerPreviewController(document, () => ({
+  locale: currentLocale,
+  enableChemistry: currentChemistry,
+}));
+
 let uninstallHandlers: (() => void) | null = null;
 
 function enableExtension(): void {
   if (!uninstallHandlers) {
     uninstallHandlers = installInteractionHandlers(document, getProcessOptions);
   }
-  if (document.body) {
+  const startAll = (): void => {
     observer.start(document.body);
+    if (currentComposerPreview) {
+      composerPreview.start();
+    }
+  };
+  if (document.body) {
+    startAll();
   } else {
-    window.addEventListener(
-      "DOMContentLoaded",
-      () => observer.start(document.body),
-      { once: true }
-    );
+    window.addEventListener("DOMContentLoaded", startAll, { once: true });
   }
 }
 
 function disableExtension(): void {
   observer.stop();
+  composerPreview.stop();
   if (uninstallHandlers) {
     uninstallHandlers();
     uninstallHandlers = null;
@@ -66,12 +78,13 @@ function reprocessPage(): void {
   restoreAllMath(document);
   removeBareLatexBars(document);
   processAllTweets(document, getProcessOptions());
+  composerPreview.refresh();
 }
 
 /**
  * Content script entry point on https://x.com and https://twitter.com.
- * Syncs On/Off state, chemistry support, bare-LaTeX opt-in button, and UI language
- * live from `chrome.storage.sync`.
+ * Syncs On/Off state, chemistry support, bare-LaTeX opt-in button, live composer
+ * preview, and UI language live from `chrome.storage.sync`.
  */
 function bootstrap(): void {
   if (typeof chrome !== "undefined" && chrome.storage?.sync) {
@@ -80,12 +93,14 @@ function bootstrap(): void {
         [STORAGE_KEY_ENABLED]: true,
         [STORAGE_KEY_CHEMISTRY]: true,
         [STORAGE_KEY_BARE_BUTTON]: true,
+        [STORAGE_KEY_COMPOSER_PREVIEW]: true,
         [STORAGE_KEY_LOCALE]: null,
       },
       (items) => {
         currentEnabled = Boolean(items[STORAGE_KEY_ENABLED]);
         currentChemistry = Boolean(items[STORAGE_KEY_CHEMISTRY]);
         currentBareButton = Boolean(items[STORAGE_KEY_BARE_BUTTON]);
+        currentComposerPreview = Boolean(items[STORAGE_KEY_COMPOSER_PREVIEW]);
         currentLocale = normalizeLocale(items[STORAGE_KEY_LOCALE]);
 
         if (currentEnabled) {
@@ -100,6 +115,7 @@ function bootstrap(): void {
       if (STORAGE_KEY_LOCALE in changes) {
         currentLocale = normalizeLocale(changes[STORAGE_KEY_LOCALE].newValue);
         updateRenderedLabels(currentLocale, document);
+        composerPreview.refresh();
       }
 
       if (STORAGE_KEY_ENABLED in changes) {
@@ -124,6 +140,17 @@ function bootstrap(): void {
           removeBareLatexBars(document);
         } else if (currentEnabled) {
           processAllTweets(document, getProcessOptions());
+        }
+      }
+
+      if (STORAGE_KEY_COMPOSER_PREVIEW in changes) {
+        currentComposerPreview = Boolean(
+          changes[STORAGE_KEY_COMPOSER_PREVIEW].newValue
+        );
+        if (currentComposerPreview && currentEnabled) {
+          composerPreview.start();
+        } else {
+          composerPreview.stop();
         }
       }
     });

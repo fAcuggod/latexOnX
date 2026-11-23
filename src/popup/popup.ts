@@ -8,6 +8,7 @@ import {
 const STORAGE_KEY_ENABLED = "enabled";
 const STORAGE_KEY_CHEMISTRY = "enableChemistry";
 const STORAGE_KEY_BARE_BUTTON = "enableBareLatexButton";
+const STORAGE_KEY_COMPOSER_PREVIEW = "enableComposerPreview";
 const STORAGE_KEY_LOCALE = "locale";
 
 const toggleInput = document.getElementById(
@@ -19,6 +20,9 @@ const chemistryInput = document.getElementById(
 const bareButtonInput = document.getElementById(
   "toggle-bare-button"
 ) as HTMLInputElement | null;
+const composerPreviewInput = document.getElementById(
+  "toggle-composer-preview"
+) as HTMLInputElement | null;
 
 const subtitleEl = document.getElementById("subtitle");
 const toggleLabelEl = document.getElementById("toggle-label");
@@ -26,6 +30,7 @@ const statusTextEl = document.getElementById("status-text");
 const optionsTitleEl = document.getElementById("options-title");
 const chemistryLabelEl = document.getElementById("chemistry-label");
 const bareLatexLabelEl = document.getElementById("bare-latex-label");
+const composerPreviewLabelEl = document.getElementById("composer-preview-label");
 const syntaxTitleEl = document.getElementById("syntax-title");
 const modeInlineEl = document.getElementById("mode-inline");
 const modeDisplay1El = document.getElementById("mode-display-1");
@@ -48,6 +53,9 @@ function applyTranslations(locale: Locale): void {
   if (optionsTitleEl) optionsTitleEl.textContent = msg.optionsTitle;
   if (chemistryLabelEl) chemistryLabelEl.textContent = msg.chemistryLabel;
   if (bareLatexLabelEl) bareLatexLabelEl.textContent = msg.bareLatexLabel;
+  if (composerPreviewLabelEl) {
+    composerPreviewLabelEl.textContent = msg.composerPreviewLabel;
+  }
   if (syntaxTitleEl) syntaxTitleEl.textContent = msg.syntaxTitle;
   if (modeInlineEl) modeInlineEl.textContent = msg.modeInline;
   if (modeDisplay1El) modeDisplay1El.textContent = msg.modeDisplay;
@@ -108,12 +116,21 @@ bareButtonInput?.addEventListener("change", () => {
   }
 });
 
+composerPreviewInput?.addEventListener("change", () => {
+  if (typeof chrome !== "undefined" && chrome.storage?.sync) {
+    chrome.storage.sync.set({
+      [STORAGE_KEY_COMPOSER_PREVIEW]: composerPreviewInput.checked,
+    });
+  }
+});
+
 if (typeof chrome !== "undefined" && chrome.storage?.sync) {
   chrome.storage.sync.get(
     {
       [STORAGE_KEY_ENABLED]: true,
       [STORAGE_KEY_CHEMISTRY]: true,
       [STORAGE_KEY_BARE_BUTTON]: true,
+      [STORAGE_KEY_COMPOSER_PREVIEW]: true,
       [STORAGE_KEY_LOCALE]: null,
     },
     (items) => {
@@ -123,6 +140,11 @@ if (typeof chrome !== "undefined" && chrome.storage?.sync) {
       }
       if (bareButtonInput) {
         bareButtonInput.checked = Boolean(items[STORAGE_KEY_BARE_BUTTON]);
+      }
+      if (composerPreviewInput) {
+        composerPreviewInput.checked = Boolean(
+          items[STORAGE_KEY_COMPOSER_PREVIEW]
+        );
       }
       const locale = normalizeLocale(items[STORAGE_KEY_LOCALE]);
       applyTranslations(locale);

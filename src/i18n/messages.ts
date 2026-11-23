@@ -10,6 +10,7 @@ export interface Messages {
   optionsTitle: string;
   chemistryLabel: string;
   bareLatexLabel: string;
+  composerPreviewLabel: string;
   syntaxTitle: string;
   modeInline: string;
   modeDisplay: string;
@@ -21,6 +22,15 @@ export interface Messages {
   showRawBtn: string;
   renderBareTooltip: string;
   showRawTooltip: string;
+  previewTitle: string;
+  previewCloseTooltip: string;
+  previewReadySingular: string;
+  previewReadyPlural: string;
+  previewIssueSingular: string;
+  previewIssuePlural: string;
+  diagUnclosed: string;
+  diagChemDisabled: string;
+  diagFormulaPrefix: string;
   languageLabel: string;
 }
 
@@ -33,6 +43,7 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     optionsTitle: "Features",
     chemistryLabel: "Chemistry (\\ce, \\pu)",
     bareLatexLabel: "Undelimited LaTeX button",
+    composerPreviewLabel: "Live composer preview",
     syntaxTitle: "Supported syntax",
     modeInline: "Inline",
     modeDisplay: "Display block",
@@ -44,6 +55,15 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     showRawBtn: "↺ Show raw",
     renderBareTooltip: "Render detected undelimited LaTeX in this post",
     showRawTooltip: "Restore original raw LaTeX text",
+    previewTitle: "LaTeX Preview",
+    previewCloseTooltip: "Hide preview",
+    previewReadySingular: "1 formula ready",
+    previewReadyPlural: "{n} formulas ready",
+    previewIssueSingular: "1 issue",
+    previewIssuePlural: "{n} issues",
+    diagUnclosed: "Unclosed {open} delimiter — add closing {close}",
+    diagChemDisabled: "Chemistry commands (\\ce, \\pu) are disabled in settings.",
+    diagFormulaPrefix: "Formula #{n}:",
     languageLabel: "Language",
   },
   es: {
@@ -54,6 +74,7 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     optionsTitle: "Funciones",
     chemistryLabel: "Química (\\ce, \\pu)",
     bareLatexLabel: "Botón LaTeX sin delimitadores",
+    composerPreviewLabel: "Vista previa al redactar",
     syntaxTitle: "Sintaxis soportada",
     modeInline: "En línea (inline)",
     modeDisplay: "En bloque (display)",
@@ -65,6 +86,15 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     showRawBtn: "↺ Ver original",
     renderBareTooltip: "Renderizar fórmulas LaTeX detectadas sin delimitadores",
     showRawTooltip: "Restaurar el texto LaTeX original",
+    previewTitle: "Vista previa LaTeX",
+    previewCloseTooltip: "Ocultar vista previa",
+    previewReadySingular: "1 fórmula lista",
+    previewReadyPlural: "{n} fórmulas listas",
+    previewIssueSingular: "1 aviso",
+    previewIssuePlural: "{n} avisos",
+    diagUnclosed: "Delimitador {open} sin cerrar — agregá {close}",
+    diagChemDisabled: "Química (\\ce, \\pu) está desactivada en la configuración.",
+    diagFormulaPrefix: "Fórmula #{n}:",
     languageLabel: "Idioma",
   },
   zh: {
@@ -75,6 +105,7 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     optionsTitle: "功能选项",
     chemistryLabel: "化学公式 (\\ce, \\pu)",
     bareLatexLabel: "无定界符 LaTeX 按钮",
+    composerPreviewLabel: "发帖实时预览",
     syntaxTitle: "支持的语法",
     modeInline: "行内公式 (inline)",
     modeDisplay: "块级公式 (display)",
@@ -86,6 +117,15 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     showRawBtn: "↺ 显示原文",
     renderBareTooltip: "渲染此帖中检测到的无定界符 LaTeX 公式",
     showRawTooltip: "恢复原始 LaTeX 文本",
+    previewTitle: "LaTeX 实时预览",
+    previewCloseTooltip: "隐藏预览",
+    previewReadySingular: "1 个公式就绪",
+    previewReadyPlural: "{n} 个公式就绪",
+    previewIssueSingular: "1 个提示",
+    previewIssuePlural: "{n} 个提示",
+    diagUnclosed: "未闭合的 {open} 定界符 — 请补充 {close}",
+    diagChemDisabled: "化学公式（\\ce, \\pu）已在设置中关闭。",
+    diagFormulaPrefix: "公式 #{n}：",
     languageLabel: "语言",
   },
 };

@@ -29,6 +29,7 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 ### Características principales
 
 - **Sintaxis sin colisiones:** soporta `\(...\)` en línea y `$$...$$` / `\[...\]` en bloque, dejando completamente intactos precios y *cashtags*.
+- **Vista previa en vivo al redactar:** panel flotante con *debounce* debajo del compositor de X que renderiza tus fórmulas en tiempo real y avisa antes de publicar si faltan delimitadores de cierre, llaves o hay comandos inválidos.
 - **Química y unidades físicas (`mhchem`):** renderiza fórmulas químicas, cargas iónicas, flechas de reacción y unidades (`\ce{...}`, `\pu{...}`), activable desde el popup.
 - **Botón opt-in para LaTeX sin delimitadores:** detecta publicaciones con comandos LaTeX/químicos inequívocos (ignorando escapes de código y rutas Windows) y muestra un botón discreto `∑ Renderizar LaTeX` / `↺ Ver original`.
 - **Diseñada para el frontend actual de X:** utiliza etiquetas semánticas estándar (`<article>` / `[role="article"]`) y construye nodos DOM directamente con `katex.render()` (**cero `.innerHTML`**), 100% compatible con la política *Trusted Types* de X.
@@ -90,7 +91,7 @@ Abrí `dist-demo/index.html` en tu navegador para probar fórmulas en los 3 tema
 
 ```bash
 npm run typecheck   # Verifica tipos estrictos con TypeScript (tsc --noEmit)
-npm test            # Ejecuta los 66 tests unitarios y de DOM (Vitest + happy-dom)
+npm test            # Ejecuta los 81 tests unitarios y de DOM (Vitest + happy-dom)
 npm run test:watch  # Modo watch para TDD
 npm run build       # Compila la extensión Chrome MV3 en dist/
 npm run build:demo  # Compila el sandbox local en dist-demo/

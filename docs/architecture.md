@@ -61,3 +61,9 @@ Because `src/core/` has no DOM or browser API dependencies, it is fast to test, 
    - **Delegated interaction handler:** a single global listener handles both click-to-copy (with localized CSS `attr(data-copied-label)` feedback) and the discrete opt-in `∑ Render LaTeX` / `↺ Show raw` post button.
    - **Optimized local fonts:** `scripts/build.mjs` strips legacy `.ttf`/`.woff` rules, bundling only `.woff2` (~250 KB vs ~1.3 MB) rewritten to `chrome-extension://__MSG_@@extension_id__/fonts/` in `web_accessible_resources`.
    - **Multilingual support:** official Chrome `_locales/` (`en`, `es`, `zh_CN`) plus a live `EN | ES | 中文` switcher and feature toggles synced across tabs via `chrome.storage.sync`.
+
+8. **Live Composer Preview (`src/core/composerPreview.ts` & `src/content/composerOverlay.ts`):**
+   - **Pure draft analyzer:** `analyzeComposerDraft` runs `parseMathSegments`, `validateLatex`, and `findUnclosedDelimiter` to produce a declarative preview state (`shouldShowPreview`, `segments`, `diagnostics`, `formulaCount`).
+   - **Debounced updates:** `createDebouncer(120, ...)` throttles rapid keystrokes so KaTeX re-renders once per typing pause rather than on every character.
+   - **Floating `document.body` portal:** anchored to `[role="textbox"][contenteditable="true"]` via `getBoundingClientRect()` (auto-flipping above when near the bottom edge), completely isolated from X's React editor DOM so reconciliation never conflicts, and rendered without `.innerHTML` (Trusted Types compliant).
+   - **Automatic theme matching:** inspects `getComputedStyle(document.body).backgroundColor` luminance to match X's Light, Dim, or Lights Out surface.
