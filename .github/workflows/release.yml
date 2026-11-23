@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck and run test suite
+        run: npm run typecheck && npm test
+
+      - name: Package Chrome MV3 extension ZIP
+        run: npm run package
+
+      - name: Publish GitHub Release with prebuilt ZIP
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          ZIP_FILE="release/latex-on-x-${TAG}.zip"
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "Expected archive $ZIP_FILE was not found."
+            exit 1
+          fi
+          gh release create "$TAG" "$ZIP_FILE" \
+            --title "LaTeX on X ${TAG}" \
+            --generate-notes
