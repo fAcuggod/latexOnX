@@ -1,8 +1,11 @@
 import {
   analyzeComposerDraft,
+  convertDisplayHintToInline,
   createDebouncer,
+  findInlineDisplayHints,
   type ComposerDiagnostic,
   type Debouncer,
+  type InlineDisplayHint,
 } from "../core/composerPreview.js";
 import {
   applyFormulaInsertion,
@@ -16,6 +19,11 @@ import {
   type PlainMathSuggestion,
 } from "../core/plainMathCompiler.js";
 import type { ExportTheme } from "../core/pngExporter.js";
+import {
+  applyQuickSymbol,
+  QUICK_SYMBOLS,
+  type QuickSymbol,
+} from "../core/symbolBar.js";
 import { getMessages, type Locale } from "../i18n/messages.js";
 import { renderFormulaToElement } from "../renderer/katexRenderer.js";
 import {
@@ -90,6 +98,50 @@ export function readComposerCursor(el: HTMLElement, text: string): number {
   }
 
   return text.length;
+}
+
+/**
+ * Reads the current `[start, end]` character selection range inside a `<textarea>`
+ * or `contenteditable` composer so quick symbols can wrap highlighted text.
+ */
+export function readComposerSelection(
+  el: HTMLElement,
+  text: string
+): { start: number; end: number } {
+  if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
+    const start =
+      typeof el.selectionStart === "number" ? el.selectionStart : text.length;
+    const end = typeof el.selectionEnd === "number" ? el.selectionEnd : start;
+    return start <= end ? { start, end } : { start: end, end: start };
+  }
+
+  if (typeof window !== "undefined" && window.getSelection) {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      if (el.contains(range.startContainer) && el.contains(range.endContainer)) {
+        try {
+          const preStart = el.ownerDocument.createRange();
+          preStart.selectNodeContents(el);
+          preStart.setEnd(range.startContainer, range.startOffset);
+          const start = preStart.toString().replace(/\u200B/g, "").length;
+
+          const preEnd = el.ownerDocument.createRange();
+          preEnd.selectNodeContents(el);
+          preEnd.setEnd(range.endContainer, range.endOffset);
+          const end = preEnd.toString().replace(/\u200B/g, "").length;
+
+          return start <= end ? { start, end } : { start: end, end: start };
+        } catch {
+          const cursor = readComposerCursor(el, text);
+          return { start: cursor, end: cursor };
+        }
+      }
+    }
+  }
+
+  const cursor = readComposerCursor(el, text);
+  return { start: cursor, end: cursor };
 }
 
 /**
@@ -719,6 +771,43 @@ export function createComposerPreviewController(
       panel.appendChild(diagList);
     }
 
+    // Friendly non-blocking inline-display typography tips (v1.3)
+    const inlineHints =
+      analysis.shouldShowPreview && allDiagnostics.length === 0
+        ? findInlineDisplayHints(text)
+        : [];
+    if (inlineHints.length > 0) {
+      const tipsEl = doc.createElement("div");
+      tipsEl.className = "latex-on-x-preview-tips";
+
+      for (const hint of inlineHints) {
+        const rowEl = doc.createElement("div");
+        rowEl.className = "latex-on-x-preview-tip-row";
+
+        const tipText = doc.createElement("span");
+        tipText.className = "latex-on-x-preview-tip-text";
+        tipText.textContent = msg.inlineDisplayTip.replace(
+          "{raw}",
+          () => hint.raw
+        );
+
+        const switchBtn = doc.createElement("button");
+        switchBtn.type = "button";
+        switchBtn.className = "latex-on-x-preview-tip-btn";
+        switchBtn.textContent = msg.switchToInlineBtn;
+        switchBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          applyInlineDisplayHint(hint);
+        });
+
+        rowEl.appendChild(tipText);
+        rowEl.appendChild(switchBtn);
+        tipsEl.appendChild(rowEl);
+      }
+
+      panel.appendChild(tipsEl);
+    }
+
     // Smart formula autocomplete suggestions list (v1.1)
     if (suggestions.length > 0) {
       const listEl = doc.createElement("ul");
@@ -799,6 +888,34 @@ export function createComposerPreviewController(
       panel.appendChild(listEl);
     }
 
+    // Compact Quick Symbol Bar (v1.3)
+    if (hasPreviewBody && suggestions.length === 0) {
+      const barEl = doc.createElement("div");
+      barEl.className = "latex-on-x-symbol-bar";
+      barEl.setAttribute("role", "toolbar");
+      barEl.setAttribute("aria-label", msg.symbolBarLabel);
+
+      for (const sym of QUICK_SYMBOLS) {
+        if (sym.requiresChemistry && !enableChemistry) {
+          continue;
+        }
+        const symBtn = doc.createElement("button");
+        symBtn.type = "button";
+        symBtn.className = "latex-on-x-symbol-btn";
+        symBtn.setAttribute("data-symbol-id", sym.id);
+        symBtn.setAttribute("title", sym.tooltips[locale]);
+        symBtn.setAttribute("aria-label", sym.tooltips[locale]);
+        symBtn.textContent = sym.label;
+        symBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          insertQuickSymbol(sym);
+        });
+        barEl.appendChild(symBtn);
+      }
+
+      panel.appendChild(barEl);
+    }
+
     showPanel(panel);
     positionPanel(panel, activeComposer);
   };
@@ -840,6 +957,47 @@ export function createComposerPreviewController(
     clearSuggestions();
     debouncer?.cancel();
     writeComposerValue(activeComposer, nextText, cursorPos, lastWrapped);
+    renderPreviewNow();
+  };
+
+  const applyInlineDisplayHint = (hint: InlineDisplayHint): void => {
+    if (!activeComposer || !activeComposer.isConnected) return;
+    const currentText = readComposerText(activeComposer);
+    if (currentText.slice(hint.start, hint.end) !== hint.raw) {
+      renderPreviewNow();
+      return;
+    }
+
+    const { text: nextText, cursorPos } = convertDisplayHintToInline(
+      currentText,
+      hint
+    );
+
+    clearSuggestions();
+    debouncer?.cancel();
+    writeComposerValue(
+      activeComposer,
+      nextText,
+      cursorPos,
+      hint.inlineReplacement
+    );
+    renderPreviewNow();
+  };
+
+  const insertQuickSymbol = (symbol: QuickSymbol): void => {
+    if (!activeComposer || !activeComposer.isConnected) return;
+    const currentText = readComposerText(activeComposer);
+    const { start, end } = readComposerSelection(activeComposer, currentText);
+    const { text: nextText, cursorPos, inserted } = applyQuickSymbol(
+      currentText,
+      start,
+      end,
+      symbol
+    );
+
+    clearSuggestions();
+    debouncer?.cancel();
+    writeComposerValue(activeComposer, nextText, cursorPos, inserted);
     renderPreviewNow();
   };
 

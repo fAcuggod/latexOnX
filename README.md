@@ -30,7 +30,8 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 ### Key Features
 
 - **Collision-free delimiters:** supports `\(...\)` inline and `$$...$$` / `\[...\]` display blocks, leaving single-dollar currency notation and cashtags completely untouched.
-- **Live composer preview & diagnostics:** floating, debounced KaTeX preview directly below X's post/reply composer, highlighting unclosed delimiters, unbalanced braces, disallowed macros, and syntax errors *before* posting.
+- **Live composer preview & diagnostics:** floating, debounced KaTeX preview directly below X's post/reply composer, highlighting unclosed delimiters, unbalanced braces, disallowed macros, and syntax errors *before* posting, plus a friendly non-blocking one-click tip when a `$$...$$` display block is embedded mid-sentence (`Use inline \(...\)`).
+- **Quick Symbol Bar:** compact clickable toolbar (`\(x\)`, `$$`, `a/b`, `√`, `x²`, `∑`, `∫`, `π`, `∞`, `≤`, `→`, `\ce`) inside the composer panel that wraps highlighted text or auto-wraps bare math symbols in `\(...\)` while placing the caret in the first editable slot.
 - **Smart composer autocomplete & natural-name formula catalog:** type famous formula names in English, Spanish, or Chinese (e.g. `riemann zeta`, `funcion zeta de riemann`, `formula cuadratica`, `欧拉恒等式`), search with `:query`, or type `\frac` / `\sum` commands and press `Tab` (or click) to insert ready-to-render LaTeX.
 - **Plain-math AST compiler (`f(x) = 5x + 2` -> LaTeX):** pure recursive-descent parser (`Lexer -> AST -> LaTeX`) previews everyday expressions like `f(x) = 5x + 2`, `(a+b)/(c-d)`, `sqrt(a^2+b^2)`, `det(A) = ad - bc`, and `Av = lambda v` directly in KaTeX with one-click `Convert to LaTeX` (`Tab`) or direct 3x `PNG` export, strictly ignoring dates, scores, and prose.
 - **One-click 3x HiDPI PNG export:** click `PNG` in the live preview header to copy a crisp 3x formula card matching X's Light, Dim, or Lights Out theme directly to your clipboard (paste into X with `Ctrl+V`, with automatic `.png` download fallback).
@@ -110,9 +111,10 @@ latexOnX/
 │   │   ├── parser.ts            # Lossless linear delimiter scanner
 │   │   ├── validator.ts         # Anti-DoS validator (length, brace depth, disallowed macros)
 │   │   ├── detector.ts          # High-precision bare-LaTeX & chemistry detector/segmenter
-│   │   ├── composerPreview.ts   # Draft analyzer, unclosed delimiter detector & debouncer
+│   │   ├── composerPreview.ts   # Draft analyzer, unclosed/inline-display hints & debouncer
 │   │   ├── formulaCatalog.ts    # Multilingual natural-name formula catalog & command autocomplete
 │   │   ├── plainMathCompiler.ts # Plain-math Lexer -> Recursive-Descent AST -> LaTeX compiler
+│   │   ├── symbolBar.ts         # Quick Symbol Bar palette & selection-aware insertion
 │   │   └── pngExporter.ts       # 3x HiDPI export geometry, CSS font rewriter & SVG builder
 │   ├── wasm/            # Compiled WebAssembly module + linear-memory TypeScript bridge
 │   │   ├── latex_core.wasm    # 37.5 KB release wasm32 binary
@@ -121,7 +123,7 @@ latexOnX/
 │   │   └── katexRenderer.ts # Trusted-Types-safe KaTeX + mhchem pipeline (HTML + MathML)
 │   ├── content/         # Browser layer (Chrome Manifest V3)
 │   │   ├── domProcessor.ts       # Safe TreeWalker, opt-in button bar, restore & copy
-│   │   ├── composerOverlay.ts    # Floating preview portal, autocomplete, plain-math & PNG export
+│   │   ├── composerOverlay.ts    # Floating preview, tips, symbol bar, autocomplete & PNG export
 │   │   ├── formulaImageExport.ts # Base64 font embedder, SVG-to-Canvas PNG & clipboard export
 │   │   ├── observer.ts           # rAF-batched MutationObserver for SPA/infinite scroll
 │   │   ├── index.ts              # Entry point synced with chrome.storage.sync
@@ -131,7 +133,7 @@ latexOnX/
 │   └── demo/            # Live local KaTeX + mhchem sandbox
 ├── public/              # manifest.json (MV3), icons & Chrome _locales
 ├── scripts/             # build.mjs, build-wasm.mjs & benchmark.mjs
-├── tests/               # 113 automated Vitest unit, DOM & WASM equivalence tests
+├── tests/               # 120 automated Vitest unit, DOM & WASM equivalence tests
 └── docs/                # Architecture, TypeScript & Rust/WASM guides
 ```
 
@@ -155,7 +157,7 @@ Measured via `npm run bench` on **10,000 mixed X posts** (8,000 valid formulas, 
 
 ```bash
 npm run typecheck   # Strict TypeScript type checking (tsc --noEmit)
-npm test            # Run all 113 Vitest unit, DOM & WASM equivalence tests
+npm test            # Run all 120 Vitest unit, DOM & WASM equivalence tests
 npm run test:rust   # Run all 21 native Rust unit tests (cargo test)
 npm run build:wasm  # Recompile crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # Run TypeScript vs. Rust/WASM benchmark over 10,000 posts
@@ -175,7 +177,7 @@ npm run check       # Run typecheck + tests + extension build
 - [x] **v1.0 (Rust/WASM Core):** zero-dependency Rust/WebAssembly parser and validator (`37.5 KB`), differential equivalence tests, and reproducible TypeScript vs. WASM benchmarks.
 - [x] **v1.1 (Smart Composer Autocomplete & Formula Catalog):** accent-insensitive EN/ES/ZH natural-name formula suggestions, `:query` search, and `\command` Tab-completion directly inside X's composer.
 - [x] **v1.2 (Plain-Math / AsciiMath-lite Compiler):** pure recursive-descent parser (`Lexer -> AST -> LaTeX`) converting everyday expressions like `f(x) = 5x + 2` and `(a+b)/(c+d)` into LaTeX with one click.
-- [ ] **v1.3 (Quick Symbol Bar):** compact clickable symbol palette (`frac`, `√`, `∑`, `∫`, `π`, `∞`, `\ce{}`) inside the composer panel.
+- [x] **v1.3 (Quick Symbol Bar & Inline-Display Assistant):** non-blocking 1-click `Use inline \(...\)` tip for mid-sentence `$$...$$` blocks and a compact clickable symbol toolbar (`\(x\)`, `$$`, `a/b`, `√`, `x²`, `∑`, `∫`, `π`, `∞`, `≤`, `→`, `\ce`) inside the composer panel.
 
 ---
 

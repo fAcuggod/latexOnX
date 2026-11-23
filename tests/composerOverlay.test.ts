@@ -426,6 +426,137 @@ describe("composerOverlay (Milestone B.2)", () => {
 
     controller.stop();
   });
+
+  it("shows a non-blocking inline-display tip for mid-sentence $$...$$ and converts it to \\(...\\) in one click", () => {
+    vi.useFakeTimers();
+
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+
+    const controller = createComposerPreviewController(document, () => ({
+      locale: "es",
+      enableChemistry: true,
+      debounceMs: 50,
+    }));
+    controller.start();
+
+    // User's exact mid-sentence display block case
+    textarea.value =
+      "si definimos a \\(e^{i\\pi} + 1 = 0\\) es facil ver que restando $$1$$ a ambos lados, se tiene que \\(e^{i\\pi} = -1\\)";
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+
+    const panel = document.querySelector(
+      `[${PREVIEW_PANEL_ATTR}="true"]`
+    ) as HTMLElement;
+    expect(panel).not.toBeNull();
+    expect(panel.style.display).toBe("block");
+
+    const tipText = panel.querySelector(
+      ".latex-on-x-preview-tip-text"
+    ) as HTMLElement;
+    expect(tipText).not.toBeNull();
+    // Ensure `$$` was NOT collapsed to `$` by String.prototype.replace
+    expect(tipText.textContent).toBe(
+      "$$1$$ está en modo bloque (salta de línea)."
+    );
+
+    const tipBtn = panel.querySelector(
+      ".latex-on-x-preview-tip-btn"
+    ) as HTMLButtonElement;
+    expect(tipBtn).not.toBeNull();
+    expect(tipBtn.textContent).toBe("Pasar a en línea \\(...\\)");
+
+    tipBtn.click();
+    expect(textarea.value).toBe(
+      "si definimos a \\(e^{i\\pi} + 1 = 0\\) es facil ver que restando \\(1\\) a ambos lados, se tiene que \\(e^{i\\pi} = -1\\)"
+    );
+    expect(panel.querySelector(".latex-on-x-preview-tips")).toBeNull();
+    expect(panel.querySelectorAll(".latex-on-x-preview-body .katex")).toHaveLength(3);
+
+    // Standalone display formula does NOT trigger the inline tip
+    textarea.value = "$$E = mc^2$$";
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    vi.advanceTimersByTime(60);
+    expect(panel.querySelector(".latex-on-x-preview-tips")).toBeNull();
+
+    controller.stop();
+  });
+
+  it("renders the Quick Symbol Bar, inserts templates or wraps selections, respects enableChemistry, and never uses .innerHTML", () => {
+    vi.useFakeTimers();
+
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+
+    let enableChemistry = true;
+    const controller = createComposerPreviewController(document, () => ({
+      locale: "en",
+      enableChemistry,
+      debounceMs: 50,
+    }));
+
+    const innerHtmlDescriptor = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      "innerHTML"
+    );
+    const spySetter = vi.fn(() => {
+      throw new TypeError("TrustedHTML required");
+    });
+    Object.defineProperty(Element.prototype, "innerHTML", {
+      configurable: true,
+      get: innerHtmlDescriptor?.get,
+      set: spySetter,
+    });
+
+    try {
+      controller.start();
+
+      // 1. Inside math: clicking `a/b` inserts `\frac{}{}` with caret in numerator
+      textarea.value = "$$1 + $$";
+      textarea.setSelectionRange(6, 6);
+      textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+
+      const panel = document.querySelector(
+        `[${PREVIEW_PANEL_ATTR}="true"]`
+      ) as HTMLElement;
+      const bar = panel.querySelector(".latex-on-x-symbol-bar") as HTMLElement;
+      expect(bar).not.toBeNull();
+      expect(bar.getAttribute("role")).toBe("toolbar");
+      expect(bar.querySelector('[data-symbol-id="ce"]')).not.toBeNull();
+
+      const fracBtn = bar.querySelector(
+        '[data-symbol-id="frac"]'
+      ) as HTMLButtonElement;
+      fracBtn.click();
+      expect(textarea.value).toBe("$$1 + \\frac{}{}$$");
+      expect(textarea.selectionStart).toBe(12);
+
+      // 2. Highlighted selection: clicking `\(x\)` wraps selected text cleanly
+      textarea.value = "Valor x + 1 y \\(y = 2\\)";
+      textarea.setSelectionRange(6, 11);
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      vi.advanceTimersByTime(60);
+
+      const inlineBtn = panel.querySelector(
+        '[data-symbol-id="inline-wrap"]'
+      ) as HTMLButtonElement;
+      inlineBtn.click();
+      expect(textarea.value).toBe("Valor \\(x + 1\\) y \\(y = 2\\)");
+
+      // 3. Disabling chemistry hides the `\ce` quick symbol button
+      enableChemistry = false;
+      controller.refresh();
+      expect(panel.querySelector('[data-symbol-id="ce"]')).toBeNull();
+
+      expect(spySetter).not.toHaveBeenCalled();
+      controller.stop();
+    } finally {
+      if (innerHtmlDescriptor) {
+        Object.defineProperty(Element.prototype, "innerHTML", innerHtmlDescriptor);
+      }
+    }
+  });
 });
 
 

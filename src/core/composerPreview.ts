@@ -259,3 +259,100 @@ export function createDebouncer(
     },
   };
 }
+
+export interface InlineDisplayHint {
+  /** Exact raw display formula substring (e.g. `$$1$$`). */
+  raw: string;
+  /** Inner trimmed LaTeX source (e.g. `1`). */
+  content: string;
+  /** Exact start index in the draft text. */
+  start: number;
+  /** Exact end index in the draft text. */
+  end: number;
+  /** Suggested inline replacement (`\(1\)`). */
+  inlineReplacement: string;
+}
+
+const BLOCK_ONLY_COMMAND_RE =
+  /\\(?:begin|sum|int|iint|iiint|oint|prod|lim|frac|dfrac|cases|matrix|pmatrix|bmatrix|align)\b|\\\\/;
+
+/**
+ * Detects `$$...$$` display blocks embedded inside a sentence on the same line
+ * (e.g., `"restando $$1$$ a ambos lados"`), so the composer can offer a friendly
+ * non-blocking 1-click tip to switch to inline `\(...\)` without breaking standard
+ * LaTeX display semantics.
+ *
+ * Intentionally ignores:
+ * - Standalone `$$...$$` on its own line.
+ * - Large/display-oriented blocks at the end of a line containing `\sum`, `\int`, `\frac`, `\begin{...}`, etc.
+ */
+export function findInlineDisplayHints(text: string): InlineDisplayHint[] {
+  const segments = parseMathSegments(text);
+  const hints: InlineDisplayHint[] = [];
+  let offset = 0;
+
+  for (const seg of segments) {
+    if (seg.type === "text") {
+      offset += seg.content.length;
+      continue;
+    }
+
+    const start = offset;
+    const end = offset + seg.raw.length;
+    offset = end;
+
+    // Only suggest for `$$...$$` blocks (authors explicitly using `\[...\]` know display syntax)
+    if (seg.mode !== "display" || !seg.raw.startsWith("$$")) {
+      continue;
+    }
+    if (seg.content.includes("\n") || /\\begin\b|\\\\/.test(seg.content)) {
+      continue;
+    }
+
+    const lineStart = start === 0 ? 0 : text.lastIndexOf("\n", start - 1) + 1;
+    const nextNl = text.indexOf("\n", end);
+    const lineEnd = nextNl === -1 ? text.length : nextNl;
+
+    const textBeforeTrimmed = text.slice(lineStart, start).trim();
+    const textAfterTrimmed = text.slice(end, lineEnd).trim();
+    const hasTextBeforeOnLine = textBeforeTrimmed.length > 0;
+    const hasTextAfterOnLine = textAfterTrimmed.length > 0;
+
+    // Case 1: Surrounded by text on BOTH sides of the same line (`restando $$1$$ a ambos lados`)
+    const embeddedMidSentence = hasTextBeforeOnLine && hasTextAfterOnLine;
+    // Case 2: Short simple formula inline with prose on one side (excluding equations introduced by `:`)
+    const shortInlineWithProse =
+      (hasTextBeforeOnLine || hasTextAfterOnLine) &&
+      !textBeforeTrimmed.endsWith(":") &&
+      seg.content.length <= 20 &&
+      !BLOCK_ONLY_COMMAND_RE.test(seg.content);
+
+    if (embeddedMidSentence || shortInlineWithProse) {
+      hints.push({
+        raw: seg.raw,
+        content: seg.content,
+        start,
+        end,
+        inlineReplacement: `\\(${seg.content}\\)`,
+      });
+    }
+  }
+
+  return hints;
+}
+
+/**
+ * Replaces a single inline-embedded `$$...$$` display block with inline `\(...\)`.
+ */
+export function convertDisplayHintToInline(
+  text: string,
+  hint: InlineDisplayHint
+): { text: string; cursorPos: number } {
+  const nextText =
+    text.slice(0, hint.start) + hint.inlineReplacement + text.slice(hint.end);
+  return {
+    text: nextText,
+    cursorPos: hint.start + hint.inlineReplacement.length,
+  };
+}
+

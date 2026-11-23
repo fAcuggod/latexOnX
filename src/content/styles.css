@@ -428,4 +428,85 @@
   color: #ffffff;
 }
 
+/* Friendly non-blocking inline-display typography tip (v1.3) */
+.latex-on-x-preview-tips {
+  border-top: 1px solid rgba(113, 118, 123, 0.22);
+  background-color: rgba(29, 155, 240, 0.08);
+  padding: 7px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.latex-on-x-preview-tip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.latex-on-x-preview-tip-text {
+  color: #8ecdf8;
+  min-width: 0;
+}
+
+.latex-on-x-preview-panel[data-theme="light"] .latex-on-x-preview-tip-text {
+  color: #0b69a3;
+}
+
+.latex-on-x-preview-tip-btn {
+  flex-shrink: 0;
+  border: 1px solid rgba(29, 155, 240, 0.45);
+  background-color: rgba(29, 155, 240, 0.14);
+  color: #1d9bf0;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.latex-on-x-preview-tip-btn:hover {
+  background-color: rgba(29, 155, 240, 0.25);
+  border-color: rgba(29, 155, 240, 0.85);
+}
+
+/* Compact Quick Symbol Bar (v1.3) */
+.latex-on-x-symbol-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px;
+  border-top: 1px solid rgba(113, 118, 123, 0.22);
+  background-color: rgba(113, 118, 123, 0.06);
+}
+
+.latex-on-x-symbol-btn {
+  border: 1px solid rgba(113, 118, 123, 0.28);
+  background-color: transparent;
+  color: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 3px 7px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 110ms ease, border-color 110ms ease, color 110ms ease;
+}
+
+.latex-on-x-symbol-btn:hover {
+  background-color: rgba(29, 155, 240, 0.16);
+  border-color: rgba(29, 155, 240, 0.55);
+  color: #1d9bf0;
+}
+
+
 

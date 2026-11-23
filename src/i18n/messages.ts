@@ -48,6 +48,9 @@ export interface Messages {
   plainMathBadge: string;
   convertLatexBtn: string;
   convertLatexTooltip: string;
+  inlineDisplayTip: string;
+  switchToInlineBtn: string;
+  symbolBarLabel: string;
   languageLabel: string;
 }
 
@@ -98,6 +101,9 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     plainMathBadge: "Plain math",
     convertLatexBtn: "Convert to LaTeX",
     convertLatexTooltip: "Convert plain math to LaTeX (Tab)",
+    inlineDisplayTip: "{raw} is in block mode (new line).",
+    switchToInlineBtn: "Use inline \\(...\\)",
+    symbolBarLabel: "Quick LaTeX symbols",
     languageLabel: "Language",
   },
   es: {
@@ -146,6 +152,9 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     plainMathBadge: "Matemática natural",
     convertLatexBtn: "Convertir a LaTeX",
     convertLatexTooltip: "Convertir a LaTeX (Tab)",
+    inlineDisplayTip: "{raw} está en modo bloque (salta de línea).",
+    switchToInlineBtn: "Pasar a en línea \\(...\\)",
+    symbolBarLabel: "Símbolos rápidos de LaTeX",
     languageLabel: "Idioma",
   },
   zh: {
@@ -194,6 +203,9 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     plainMathBadge: "自然数学",
     convertLatexBtn: "转为 LaTeX",
     convertLatexTooltip: "转为 LaTeX 格式 (Tab)",
+    inlineDisplayTip: "{raw} 为块级公式（会自动换行）。",
+    switchToInlineBtn: "改为行内 \\(...\\)",
+    symbolBarLabel: "常用 LaTeX 符号",
     languageLabel: "语言",
   },
 };

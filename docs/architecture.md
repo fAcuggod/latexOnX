@@ -81,9 +81,9 @@ Because `src/core/` has no DOM or browser API dependencies, it is fast to test, 
     - **React-safe caret insertion:** updates X's controlled `<textarea>` via `HTMLTextAreaElement.prototype`'s native `value` setter + `InputEvent("input")` so React's internal state tracks every insertion, automatically wrapping bare commands in `\(...\)` when outside math delimiters and placing the caret inside the first `{}` placeholder.
 
 12. **Plain-Math AST Mini-Compiler (`src/core/plainMathCompiler.ts`):**
-    - **Four-stage pure compiler:** `tokenizePlainMath` (maximal-munch lexer) -> `parsePlainMathToAst` (recursive-descent parser respecting operator precedence, implicit multiplication, right-associative powers, and bounded recursion depth) -> `emitLatexFromAst` (unwrapping redundant parens inside `\frac`, `\sqrt`, and scripts with smart `\left(...\right)`) -> `detectPlainMathInDraft` (high-precision filter rejecting dates, scores, ratios, URLs, and prose words).
-    - **Zero-LaTeX authoring workflow:** shows a live KaTeX preview directly in X's composer for expressions like `f(x) = 5x + 2` or `(a+b)/(c-d)`, with both one-click `Convert to LaTeX` (`Tab`) and direct 3x `PNG` export.
+    - **Four-stage pure compiler:** `tokenizePlainMath` (maximal-munch lexer) -> `parsePlainMathToAst` (recursive-descent parser respecting operator precedence, implicit multiplication, right-associative powers, primes, and bounded recursion depth) -> `emitLatexFromAst` (unwrapping redundant parens inside `\frac`, `\sqrt`, and scripts with smart `\left(...\right)`) -> `detectPlainMathExpressions` (linear multi-span prose scanner handling multiple embedded formulas with trailing prose while rejecting dates, scores, ratios, URLs, and plain words).
+    - **Zero-LaTeX authoring workflow:** shows a live KaTeX preview directly in X's composer for expressions like `f(x) = 5x + 2` or `(a+b)/(c-d)`, with both atomic one-click `Convert to LaTeX` (`Tab`) and direct 3x `PNG` export.
 
-
-
-
+13. **Inline-Display Typography Assistant & Quick Symbol Bar (`src/core/composerPreview.ts`, `src/core/symbolBar.ts` & `src/content/composerOverlay.ts`):**
+    - **Non-blocking inline-display hints:** preserves standard LaTeX display semantics (`$$...$$` = centered block) while `findInlineDisplayHints` detects `$$...$$` formulas embedded mid-sentence (ignoring standalone, colon-introduced, block-command, and `\[...\]` equations) and offers a localized 1-click `Use inline \(...\)` conversion button (`convertDisplayHintToInline`).
+    - **Quick Symbol Bar:** renders a compact `role="toolbar"` palette (`\(x\)`, `$$`, `a/b`, `√`, `x²`, `∑`, `∫`, `π`, `∞`, `≤`, `→`, `\ce`) via `applyQuickSymbol` and `readComposerSelection`, wrapping highlighted selections or auto-wrapping bare math symbols in `\(...\)` when outside math delimiters while positioning the caret inside the first editable slot and hiding `\ce` whenever `enableChemistry` is disabled.

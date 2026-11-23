@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   analyzeComposerDraft,
+  convertDisplayHintToInline,
   createDebouncer,
+  findInlineDisplayHints,
   findUnclosedDelimiter,
 } from "../src/core/composerPreview.js";
 
@@ -186,3 +188,51 @@ describe("createDebouncer (Challenge #4.3)", () => {
     expect(fn).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("findInlineDisplayHints & convertDisplayHintToInline (v1.3)", () => {
+  it("flags mid-sentence $$...$$ blocks and converts cleanly to inline \\(...\\)", () => {
+    const draft =
+      "si definimos a \\(e^{i\\pi} + 1 = 0\\) es facil ver que restando $$1$$ a ambos lados, se tiene que \\(e^{i\\pi} = -1\\)";
+    const hints = findInlineDisplayHints(draft);
+
+    expect(hints).toHaveLength(1);
+    expect(hints[0]).toEqual({
+      raw: "$$1$$",
+      content: "1",
+      start: draft.indexOf("$$1$$"),
+      end: draft.indexOf("$$1$$") + "$$1$$".length,
+      inlineReplacement: "\\(1\\)",
+    });
+
+    const converted = convertDisplayHintToInline(draft, hints[0]);
+    expect(converted.text).toBe(
+      "si definimos a \\(e^{i\\pi} + 1 = 0\\) es facil ver que restando \\(1\\) a ambos lados, se tiene que \\(e^{i\\pi} = -1\\)"
+    );
+    expect(converted.cursorPos).toBe(hints[0].start + "\\(1\\)".length);
+  });
+
+  it("flags short one-sided inline $$x$$ prose while ignoring standalone, colon-introduced, block-command, and \\[...\\] equations", () => {
+    // Short inline on one side without colon -> helpful tip
+    expect(findInlineDisplayHints("sumamos el valor $$x$$")).toHaveLength(1);
+    expect(findInlineDisplayHints("$$1$$ es el neutro")).toHaveLength(1);
+
+    // Standalone display formulas -> NOT flagged
+    expect(findInlineDisplayHints("$$E = mc^2$$")).toEqual([]);
+    expect(
+      findInlineDisplayHints(
+        "Intro line\n$$\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}$$\nOutro"
+      )
+    ).toEqual([]);
+
+    // Colon-introduced or block-command equations at end of line -> NOT flagged
+    expect(findInlineDisplayHints("Euler: $$e^{i\\pi} + 1 = 0$$")).toEqual([]);
+    expect(findInlineDisplayHints("Integral: $$\\int_0^1 x\\,dx$$")).toEqual([]);
+    expect(
+      findInlineDisplayHints("Mirar la $$\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}$$")
+    ).toEqual([]);
+
+    // Explicit \[...\] syntax -> NOT flagged
+    expect(findInlineDisplayHints("restando \\[1\\] a ambos lados")).toEqual([]);
+  });
+});
+
