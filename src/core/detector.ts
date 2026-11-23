@@ -91,7 +91,7 @@ function isAsciiLetter(char: string): boolean {
 }
 
 /**
- * CHALLENGE #3 — Function 1: `extractLatexCommands`
+ * CHALLENGE #3: Function 1: `extractLatexCommands`
  *
  * Formal Contract:
  * - Precondition:  `text` is any string (possibly empty).
@@ -130,7 +130,7 @@ export function extractLatexCommands(text: string): string[] {
 }
 
 /**
- * CHALLENGE #3 — Function 2: `findMatchingBrace`
+ * CHALLENGE #3: Function 2: `findMatchingBrace`
  *
  * Formal Contract:
  * - Precondition:  `text` is any string and `openBraceIdx` is an integer index.
@@ -196,7 +196,7 @@ export function usesChemistryCommands(latex: string): boolean {
 }
 
 /**
- * CHALLENGE #3 — Function 3: `hasBareLatex`
+ * CHALLENGE #3: Function 3: `hasBareLatex`
  *
  * Formal Contract:
  * - Precondition:  `text` is any string.
@@ -301,7 +301,7 @@ function parseChemistryLine(line: string, segments: Segment[]): void {
 }
 
 /**
- * CHALLENGE #3 — Function 4: `parseBareLatexSegments`
+ * CHALLENGE #3: Function 4: `parseBareLatexSegments`
  *
  * Formal Contract:
  * - Precondition:  `text` is any string.

@@ -93,15 +93,16 @@ describe("composerOverlay (Milestone B.2)", () => {
     const items = panel.querySelectorAll(".latex-on-x-preview-diagnostics li");
     expect(items).toHaveLength(3);
     expect(panel.textContent).toContain("3 issues");
-    expect(panel.textContent).toContain("Unclosed \\( delimiter");
-    expect(panel.textContent).toContain("unbalanced braces");
+    expect(panel.textContent).toContain("Unclosed \\( delimiter (missing \\)).");
+    expect(panel.textContent).toContain("Formula #1: Unbalanced braces.");
 
     // Live locale switch updates header and diagnostics immediately
     locale = "es";
     controller.refresh();
     expect(panel.textContent).toContain("Vista previa LaTeX");
     expect(panel.textContent).toContain("3 avisos");
-    expect(panel.textContent).toContain("Delimitador \\( sin cerrar");
+    expect(panel.textContent).toContain("Delimitador \\( sin cerrar (falta \\)).");
+    expect(panel.textContent).toContain("Fórmula #1: Llaves desbalanceadas.");
 
     controller.stop();
   });
@@ -218,7 +219,7 @@ describe("composerOverlay (Milestone B.2)", () => {
     expect(panel).not.toBeNull();
     expect(panel.parentElement).toBe(document.body);
     expect(panel.style.display).toBe("block");
-    expect(panel.textContent).toContain("Unclosed $$ delimiter");
+    expect(panel.textContent).toContain("Unclosed $$ delimiter (missing $$).");
 
     // Switching focus into a modal <dialog> composer re-hosts the panel inside <dialog>
     inlineTextarea.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
@@ -228,7 +229,7 @@ describe("composerOverlay (Milestone B.2)", () => {
     modalTextarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
     expect(panel.parentElement).toBe(dialog);
     expect(panel.style.display).toBe("block");
-    expect(panel.textContent).toContain("unbalanced braces");
+    expect(panel.textContent).toContain("Formula #1: Unbalanced braces.");
 
     controller.stop();
   });

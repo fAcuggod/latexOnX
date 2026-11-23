@@ -70,7 +70,7 @@ export interface Debouncer {
 }
 
 /**
- * CHALLENGE #4 — Function 4.1: `findUnclosedDelimiter`
+ * CHALLENGE #4: Function 4.1: `findUnclosedDelimiter`
  *
  * Role:
  *   While `parseMathSegments` intentionally treats unclosed delimiters as literal text
@@ -123,7 +123,7 @@ export function findUnclosedDelimiter(text: string): UnclosedDelimiter | null {
 }
 
 /**
- * CHALLENGE #4 — Function 4.2: `analyzeComposerDraft`
+ * CHALLENGE #4: Function 4.2: `analyzeComposerDraft`
  *
  * Role:
  *   Pure brain of the live composer preview panel. Given the author's current draft text,
@@ -201,7 +201,7 @@ export function analyzeComposerDraft(
 }
 
 /**
- * CHALLENGE #4 — Function 4.3: `createDebouncer`
+ * CHALLENGE #4: Function 4.3: `createDebouncer`
  *
  * Role:
  *   Prevents re-parsing and re-rendering KaTeX on every single keystroke while typing fast.

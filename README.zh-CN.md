@@ -33,7 +33,7 @@
 - **化学公式与物理单位（`mhchem`）：** 原生支持化学式、离子电荷、反应箭头与物理单位（`\ce{...}`、`\pu{...}`），可在弹窗中随时开关。
 - **无定界符 LaTeX 按需渲染按钮：** 精准识别未写定界符的 LaTeX/化学公式帖子（自动忽略代码转义与 Windows 路径），并在帖子下方显示简洁的 `∑ 渲染 LaTeX` / `↺ 显示原文` 按钮。
 - **适配 X 现代前端：** 基于稳定的 HTML5 语义化标签（`<article>` / `[role="article"]`），通过 `katex.render()` 直接构建 DOM 节点（**零 `.innerHTML`**），全面兼容 X 严格的 *Trusted Types* CSP 安全策略。
-- **60–120 FPS 无限滚动：** `O(n)` 零分配快速路径即时跳过不含公式的帖子，并结合 `requestAnimationFrame` 批量调度 `MutationObserver`。
+- **60-120 FPS 无限滚动：** `O(n)` 零分配快速路径即时跳过不含公式的帖子，并结合 `requestAnimationFrame` 批量调度 `MutationObserver`。
 - **纵深防御安全模型：** 渲染前校验最大长度、花括号嵌套深度，并拦截危险宏与 HTML 命令（`\def`、`\let`、`\newcommand`、`\href`、`\htmlStyle` 等）；纯文本始终以 `TextNode` 写入，杜绝 XSS。
 - **无障碍与主题自适应：** 同时生成 HTML 与原生 MathML，自动适配 X 的**浅色**、**暗蓝（Dim）**与**纯黑（Lights Out）**主题。
 - **点击复制与即时开关：** 点击（或按 Enter/Space）任意公式即可复制 LaTeX 源码；在弹窗中随时切换总开关、化学支持或无定界符按钮，无需刷新页面。

@@ -24,7 +24,7 @@
 
 ## ¿Por qué LaTeX on X?
 
-Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosas o escribir fórmulas en texto plano difíciles de leer. A diferencia de los delimitadores de un solo signo dólar (`$...$`) —que colisionan con precios y *cashtags* financieros—, **LaTeX on X** adopta delimitadores matemáticos sin ambigüedades, valida cada expresión contra ataques DoS y renderiza las fórmulas en menos de 1 ms con **KaTeX** (HTML visual + MathML accesible).
+Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosas o escribir fórmulas en texto plano difíciles de leer. A diferencia de los delimitadores de un solo signo dólar (`$...$`), que colisionan con precios y *cashtags* financieros, **LaTeX on X** adopta delimitadores matemáticos sin ambigüedades, valida cada expresión contra ataques DoS y renderiza las fórmulas en menos de 1 ms con **KaTeX** (HTML visual + MathML accesible).
 
 ### Características principales
 
@@ -33,7 +33,7 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 - **Química y unidades físicas (`mhchem`):** renderiza fórmulas químicas, cargas iónicas, flechas de reacción y unidades (`\ce{...}`, `\pu{...}`), activable desde el popup.
 - **Botón opt-in para LaTeX sin delimitadores:** detecta publicaciones con comandos LaTeX/químicos inequívocos (ignorando escapes de código y rutas Windows) y muestra un botón discreto `∑ Renderizar LaTeX` / `↺ Ver original`.
 - **Diseñada para el frontend actual de X:** utiliza etiquetas semánticas estándar (`<article>` / `[role="article"]`) y construye nodos DOM directamente con `katex.render()` (**cero `.innerHTML`**), 100% compatible con la política *Trusted Types* de X.
-- **Scroll infinito a 60–120 FPS:** *fast-path* `O(n)` sin asignaciones de memoria que descarta publicaciones sin fórmulas al instante, junto con un `MutationObserver` agrupado en `requestAnimationFrame`.
+- **Scroll infinito a 60-120 FPS:** *fast-path* `O(n)` sin asignaciones de memoria que descarta publicaciones sin fórmulas al instante, junto con un `MutationObserver` agrupado en `requestAnimationFrame`.
 - **Seguridad por diseño:** validador previo que impone límites de longitud, profundidad de llaves y bloquea comandos peligrosos (`\def`, `\let`, `\newcommand`, `\href`, `\htmlStyle`, etc.) antes de ejecutar KaTeX; el texto plano siempre se inserta como `TextNode` (anti-XSS).
 - **Accesible y adaptable:** genera HTML + MathML nativo para lectores de pantalla y se integra con los temas **Claro**, **Noche clara (Dim)** y **Oscuro (Lights Out)** de X.
 - **Clic para copiar y On/Off instantáneo:** hacé clic (o presioná Enter/Espacio) en cualquier fórmula para copiar su LaTeX original; activá o pausá funciones desde el popup sin recargar la pestaña.

@@ -27,7 +27,7 @@ Because `src/core/` has no DOM or browser API dependencies, it is fast to test, 
 1. **Timeline Observation (`src/content/observer.ts`):**
    - A `MutationObserver` watches `document.body` (`childList: true, subtree: true, characterData: true`), capturing both infinite-scroll posts and React SPA hydration updates inside already-mounted `<article>` elements (resolving ancestors via `closest()`).
    - Mutations created by our own rendered spans (`data-latex-on-x="rendered"` / `.katex`) are ignored to avoid feedback loops.
-   - Added/updated elements are deduplicated into a `Set` and flushed once per animation frame (`requestAnimationFrame`) to sustain 60–120 FPS scrolling.
+   - Added/updated elements are deduplicated into a `Set` and flushed once per animation frame (`requestAnimationFrame`) to sustain 60-120 FPS scrolling.
 
 2. **Resilient DOM Traversal (`src/content/domProcessor.ts`):**
    - **Semantic selectors:** targets `[data-testid="tweetText"], article, [role="article"]`. Unlike fragile internal `data-testid` attributes (which X removed during frontend rewrites), HTML5 `<article>` landmarks persist for accessibility.

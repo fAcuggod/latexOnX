@@ -25,11 +25,12 @@ describe("i18n messages", () => {
     expect(normalizeLocale("invalid", "es-MX")).toBe("es");
   });
 
-  it("provides non-empty localized copy for all supported locales", () => {
+  it("provides non-empty localized copy for all supported locales without dash artifacts", () => {
     for (const locale of SUPPORTED_LOCALES) {
       const msg = getMessages(locale);
       for (const value of Object.values(msg)) {
         expect(value.trim().length).toBeGreaterThan(0);
+        expect(value).not.toMatch(/—|–|--/);
       }
     }
   });

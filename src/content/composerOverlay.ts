@@ -133,6 +133,26 @@ function formatDiagnosticLine(
     return `${prefix} ${msg.diagChemDisabled}`;
   }
 
+  if (diag.kind === "validation_error") {
+    switch (diag.reason) {
+      case "empty":
+        return `${prefix} ${msg.diagEmpty}`;
+      case "too_long":
+        return `${prefix} ${msg.diagTooLong}`;
+      case "too_deep":
+        return `${prefix} ${msg.diagTooDeep}`;
+      case "unbalanced_braces":
+        return `${prefix} ${msg.diagUnbalancedBraces}`;
+      case "forbidden_command": {
+        const cmd = diag.message.match(/\\[a-zA-Z]+/)?.[0];
+        if (cmd) {
+          return `${prefix} ${msg.diagForbiddenCommand.replace("{cmd}", () => cmd)}`;
+        }
+        return `${prefix} ${diag.message}`;
+      }
+    }
+  }
+
   return `${prefix} ${diag.message}`;
 }
 

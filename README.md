@@ -24,7 +24,7 @@
 
 ## Why LaTeX on X?
 
-Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution screenshots or writing unreadable plain-text approximations. Unlike naive single-dollar (`$...$`) renderers—which collide with currency notation and financial cashtags—**LaTeX on X** uses unambiguous mathematical delimiters, validates every expression against DoS payloads, and renders formulas in under 1 ms using **KaTeX** (visual HTML + accessible MathML).
+Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution screenshots or writing unreadable plain-text approximations. Unlike single-dollar (`$...$`) renderers, which collide with currency notation and financial cashtags, **LaTeX on X** uses unambiguous mathematical delimiters, validates every expression against DoS payloads, and renders formulas in under 1 ms using **KaTeX** (visual HTML + accessible MathML).
 
 ### Key Features
 
@@ -33,7 +33,7 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 - **Chemistry & physical units (`mhchem`):** natively renders chemical formulas, ionic charges, reaction arrows, and physical units (`\ce{...}`, `\pu{...}`), toggleable from the popup.
 - **Opt-in undelimited LaTeX button:** detects posts containing unambiguous raw LaTeX/chemistry commands (ignoring code escapes and Windows paths) and offers a discrete `∑ Render LaTeX` / `↺ Show raw` toggle right below the post.
 - **Built for X's modern frontend:** targets resilient HTML5 semantic landmarks (`<article>` / `[role="article"]`) and builds DOM trees directly via `katex.render()` with **zero `.innerHTML`**, complying with X's strict *Trusted Types* CSP.
-- **60–120 FPS infinite scrolling:** `O(n)` zero-allocation fast-path skips non-math posts immediately, paired with a `requestAnimationFrame`-batched `MutationObserver`.
+- **60-120 FPS infinite scrolling:** `O(n)` zero-allocation fast-path skips non-math posts immediately, paired with a `requestAnimationFrame`-batched `MutationObserver`.
 - **Defense-in-depth security:** pre-render validator enforces length caps, brace nesting depth, and blocks unsafe macros (`\def`, `\let`, `\newcommand`, `\href`, `\htmlStyle`, etc.) before KaTeX executes; plain text is always inserted as `TextNode` (XSS-safe).
 - **Accessible & theme-native:** outputs HTML + native MathML for screen readers and adapts automatically to X's **Light**, **Dim**, and **Lights Out** themes.
 - **Click-to-copy & instant On/Off:** click (or press Enter/Space on) any rendered formula to copy its LaTeX source; toggle rendering, chemistry, live preview, or the opt-in button live without reloading tabs.
@@ -136,11 +136,11 @@ npm run check       # Run typecheck + tests + extension build
 
 ## Roadmap
 
-- [x] **v0.1 — Core & MV3 Extension:** lossless delimiter scanner, anti-DoS validator, Trusted-Types-safe KaTeX renderer, `<article>` DOM observer, click-to-copy, and EN/ES/ZH i18n.
-- [x] **v0.2 — Chemistry & Opt-In Bare LaTeX:** `mhchem` (`\ce`, `\pu`) support and discrete `∑ Render LaTeX` / `↺ Show raw` button for undelimited posts.
-- [x] **v0.3 — Live Composer Preview:** real-time debounced KaTeX preview and validator diagnostics inside the X post composer.
-- [ ] **v0.4 — 3× HiDPI PNG Export:** one-click copy of crisp formula images for sharing with non-extension users.
-- [ ] **v1.0 — Rust/WASM Core:** port `src/core/` to Rust → WebAssembly with TypeScript vs. WASM benchmarks.
+- [x] **v0.1 (Core & MV3 Extension):** lossless delimiter scanner, anti-DoS validator, Trusted-Types-safe KaTeX renderer, `<article>` DOM observer, click-to-copy, and EN/ES/ZH i18n.
+- [x] **v0.2 (Chemistry & Opt-In Bare LaTeX):** `mhchem` (`\ce`, `\pu`) support and discrete `∑ Render LaTeX` / `↺ Show raw` button for undelimited posts.
+- [x] **v0.3 (Live Composer Preview):** real-time debounced KaTeX preview and validator diagnostics inside the X post composer.
+- [ ] **v0.4 (3x HiDPI PNG Export):** one-click copy of crisp formula images for sharing with non-extension users.
+- [ ] **v1.0 (Rust/WASM Core):** port `src/core/` to Rust/WebAssembly with TypeScript vs. WASM benchmarks.
 
 ---
 

@@ -30,6 +30,11 @@ export interface Messages {
   previewIssuePlural: string;
   diagUnclosed: string;
   diagChemDisabled: string;
+  diagEmpty: string;
+  diagTooLong: string;
+  diagTooDeep: string;
+  diagUnbalancedBraces: string;
+  diagForbiddenCommand: string;
   diagFormulaPrefix: string;
   languageLabel: string;
 }
@@ -61,8 +66,13 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     previewReadyPlural: "{n} formulas ready",
     previewIssueSingular: "1 issue",
     previewIssuePlural: "{n} issues",
-    diagUnclosed: "Unclosed {open} delimiter — add closing {close}",
+    diagUnclosed: "Unclosed {open} delimiter (missing {close}).",
     diagChemDisabled: "Chemistry commands (\\ce, \\pu) are disabled in settings.",
+    diagEmpty: "Empty expression.",
+    diagTooLong: "Exceeds the maximum allowed length.",
+    diagTooDeep: "Brace nesting is too deep.",
+    diagUnbalancedBraces: "Unbalanced braces.",
+    diagForbiddenCommand: "Disallowed command: {cmd}.",
     diagFormulaPrefix: "Formula #{n}:",
     languageLabel: "Language",
   },
@@ -92,8 +102,13 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     previewReadyPlural: "{n} fórmulas listas",
     previewIssueSingular: "1 aviso",
     previewIssuePlural: "{n} avisos",
-    diagUnclosed: "Delimitador {open} sin cerrar — agregá {close}",
+    diagUnclosed: "Delimitador {open} sin cerrar (falta {close}).",
     diagChemDisabled: "Química (\\ce, \\pu) está desactivada en la configuración.",
+    diagEmpty: "Expresión vacía.",
+    diagTooLong: "Supera la longitud máxima permitida.",
+    diagTooDeep: "Demasiados niveles de llaves anidadas.",
+    diagUnbalancedBraces: "Llaves desbalanceadas.",
+    diagForbiddenCommand: "Comando no permitido: {cmd}.",
     diagFormulaPrefix: "Fórmula #{n}:",
     languageLabel: "Idioma",
   },
@@ -123,8 +138,13 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     previewReadyPlural: "{n} 个公式就绪",
     previewIssueSingular: "1 个提示",
     previewIssuePlural: "{n} 个提示",
-    diagUnclosed: "未闭合的 {open} 定界符 — 请补充 {close}",
+    diagUnclosed: "未闭合的 {open} 定界符（缺少 {close}）。",
     diagChemDisabled: "化学公式（\\ce, \\pu）已在设置中关闭。",
+    diagEmpty: "公式内容为空。",
+    diagTooLong: "超出最大长度限制。",
+    diagTooDeep: "大括号嵌套层级过深。",
+    diagUnbalancedBraces: "大括号不匹配。",
+    diagForbiddenCommand: "不允许使用的命令：{cmd}。",
     diagFormulaPrefix: "公式 #{n}：",
     languageLabel: "语言",
   },
