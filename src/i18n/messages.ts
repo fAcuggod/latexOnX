@@ -45,6 +45,9 @@ export interface Messages {
   suggestionsTitle: string;
   suggestionsHint: string;
   suggestionInsertBtn: string;
+  plainMathBadge: string;
+  convertLatexBtn: string;
+  convertLatexTooltip: string;
   languageLabel: string;
 }
 
@@ -92,6 +95,9 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     suggestionsTitle: "Formula suggestions",
     suggestionsHint: "Tab or click to insert",
     suggestionInsertBtn: "Insert",
+    plainMathBadge: "Plain math",
+    convertLatexBtn: "Convert to LaTeX",
+    convertLatexTooltip: "Convert plain math to LaTeX (Tab)",
     languageLabel: "Language",
   },
   es: {
@@ -137,6 +143,9 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     suggestionsTitle: "Sugerencias de fórmulas",
     suggestionsHint: "Tab o clic para insertar",
     suggestionInsertBtn: "Insertar",
+    plainMathBadge: "Matemática natural",
+    convertLatexBtn: "Convertir a LaTeX",
+    convertLatexTooltip: "Convertir a LaTeX (Tab)",
     languageLabel: "Idioma",
   },
   zh: {
@@ -182,6 +191,9 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     suggestionsTitle: "公式建议",
     suggestionsHint: "按 Tab 或点击插入",
     suggestionInsertBtn: "插入",
+    plainMathBadge: "自然数学",
+    convertLatexBtn: "转为 LaTeX",
+    convertLatexTooltip: "转为 LaTeX 格式 (Tab)",
     languageLabel: "语言",
   },
 };

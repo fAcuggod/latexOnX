@@ -179,10 +179,49 @@
   color: #ffad1f;
 }
 
+.latex-on-x-preview-badge.is-plain {
+  background-color: rgba(120, 86, 255, 0.18);
+  color: #a98eff;
+}
+
+.latex-on-x-preview-panel[data-theme="light"] .latex-on-x-preview-badge.is-plain {
+  background-color: rgba(120, 86, 255, 0.12);
+  color: #6b46e5;
+}
+
 .latex-on-x-preview-actions {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.latex-on-x-preview-convert {
+  border: 1px solid rgba(120, 86, 255, 0.48);
+  background-color: rgba(120, 86, 255, 0.16);
+  color: #b79eff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 9px;
+  border-radius: 9999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.latex-on-x-preview-convert:hover {
+  background-color: rgba(120, 86, 255, 0.28);
+  border-color: rgba(120, 86, 255, 0.85);
+}
+
+.latex-on-x-preview-panel[data-theme="light"] .latex-on-x-preview-convert {
+  color: #6b46e5;
+  background-color: rgba(120, 86, 255, 0.1);
+}
+
+.latex-on-x-preview-panel[data-theme="light"] .latex-on-x-preview-convert:hover {
+  background-color: rgba(120, 86, 255, 0.18);
 }
 
 .latex-on-x-preview-export {

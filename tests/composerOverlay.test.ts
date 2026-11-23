@@ -349,7 +349,65 @@ describe("composerOverlay (Milestone B.2)", () => {
 
     controller.stop();
   });
+
+  it("renders live KaTeX preview for everyday plain math (f(x) = 5x + 2, fractions), enables PNG export, and converts to LaTeX via button or Tab", () => {
+    vi.useFakeTimers();
+
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+
+    const controller = createComposerPreviewController(document, () => ({
+      locale: "es",
+      enableChemistry: true,
+      debounceMs: 50,
+    }));
+    controller.start();
+
+    // 1. User types plain math without knowing any LaTeX delimiters
+    textarea.value = "f(x) = 5x + 2";
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+
+    const panel = document.querySelector(
+      `[${PREVIEW_PANEL_ATTR}="true"]`
+    ) as HTMLElement;
+    expect(panel).not.toBeNull();
+    expect(panel.style.display).toBe("block");
+    expect(panel.textContent).toContain("Matemática natural");
+    expect(panel.querySelector(".latex-on-x-preview-body .katex")).not.toBeNull();
+    expect(panel.querySelector(".latex-on-x-preview-export")).not.toBeNull();
+
+    // Clicking Convert to LaTeX wraps cleanly in \(...\)
+    const convertBtn = panel.querySelector(
+      ".latex-on-x-preview-convert"
+    ) as HTMLButtonElement;
+    expect(convertBtn).not.toBeNull();
+    expect(convertBtn.textContent).toBe("Convertir a LaTeX");
+    convertBtn.click();
+
+    expect(textarea.value).toBe("\\(f(x) = 5x + 2\\)");
+    expect(panel.textContent).toContain("1 fórmula lista");
+
+    // 2. Fraction compiled from AST and converted via Tab shortcut
+    textarea.value = "(a + b)/(c - d)";
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    vi.advanceTimersByTime(60);
+
+    expect(panel.querySelector(".latex-on-x-preview-convert")).not.toBeNull();
+    textarea.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+    expect(textarea.value).toBe("$$\\frac{a + b}{c - d}$$");
+
+    controller.stop();
+  });
 });
+
 
 
 

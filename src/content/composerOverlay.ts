@@ -10,6 +10,10 @@ import {
   searchFormulaCatalog,
   type FormulaMatch,
 } from "../core/formulaCatalog.js";
+import {
+  detectPlainMathInDraft,
+  type PlainMathSuggestion,
+} from "../core/plainMathCompiler.js";
 import type { ExportTheme } from "../core/pngExporter.js";
 import { getMessages, type Locale } from "../i18n/messages.js";
 import { renderFormulaToElement } from "../renderer/katexRenderer.js";
@@ -273,11 +277,13 @@ export function createComposerPreviewController(
   let panelEl: HTMLElement | null = null;
   let debouncer: Debouncer | null = null;
   let activeSuggestions: FormulaMatch[] = [];
+  let activePlainMath: PlainMathSuggestion | null = null;
   let selectedSuggestionIdx = 0;
   let lastSuggestionSignature = "";
 
   const clearSuggestions = (): void => {
     activeSuggestions = [];
+    activePlainMath = null;
     selectedSuggestionIdx = 0;
     lastSuggestionSignature = "";
   };
@@ -422,7 +428,12 @@ export function createComposerPreviewController(
     const acCtx = extractAutocompleteContext(text, cursorPos);
     const suggestions = acCtx ? searchFormulaCatalog(acCtx, locale, 5) : [];
 
-    if (!analysis.shouldShowPreview && suggestions.length === 0) {
+    const plainMath =
+      !analysis.shouldShowPreview && suggestions.length === 0
+        ? detectPlainMathInDraft(text)
+        : null;
+
+    if (!analysis.shouldShowPreview && suggestions.length === 0 && !plainMath) {
       clearSuggestions();
       hidePanel();
       return;
@@ -438,6 +449,7 @@ export function createComposerPreviewController(
       selectedSuggestionIdx = 0;
     }
     activeSuggestions = suggestions;
+    activePlainMath = plainMath;
 
     const panel = ensurePanel(activeComposer);
     const currentTheme = detectPageTheme(doc);
@@ -454,8 +466,10 @@ export function createComposerPreviewController(
     }> = [];
 
     let renderedFormulaCount = 0;
+    let hasPreviewBody = false;
 
     if (analysis.shouldShowPreview) {
+      hasPreviewBody = true;
       const erroredFormulaIndices = new Set<number>();
       for (const diag of analysis.diagnostics) {
         if (
@@ -507,6 +521,36 @@ export function createComposerPreviewController(
           }
         }
       }
+    } else if (plainMath) {
+      const wrapper = doc.createElement("span");
+      const result = renderFormulaToElement(
+        plainMath.latex,
+        plainMath.mode,
+        wrapper,
+        { enableChemistry }
+      );
+      if (result.ok) {
+        hasPreviewBody = true;
+        renderedFormulaCount = 1;
+        wrapper.className =
+          plainMath.mode === "display"
+            ? "latex-on-x-formula latex-on-x-display"
+            : "latex-on-x-formula latex-on-x-inline";
+
+        const beforeText = text.slice(0, plainMath.replaceStart);
+        const afterText = text.slice(plainMath.replaceEnd);
+        if (beforeText.length > 0) {
+          bodyEl.appendChild(doc.createTextNode(beforeText));
+        }
+        bodyEl.appendChild(wrapper);
+        if (afterText.length > 0) {
+          bodyEl.appendChild(doc.createTextNode(afterText));
+        }
+      } else {
+        clearSuggestions();
+        hidePanel();
+        return;
+      }
     }
 
     const allDiagnostics = [...analysis.diagnostics, ...extraKatexErrors];
@@ -520,9 +564,10 @@ export function createComposerPreviewController(
 
     const titleEl = doc.createElement("span");
     titleEl.className = "latex-on-x-preview-title";
-    titleEl.textContent = analysis.shouldShowPreview
-      ? `∑ ${msg.previewTitle}`
-      : `∑ ${msg.suggestionsTitle}`;
+    titleEl.textContent =
+      analysis.shouldShowPreview || plainMath
+        ? `∑ ${msg.previewTitle}`
+        : `∑ ${msg.suggestionsTitle}`;
     titleGroup.appendChild(titleEl);
 
     if (analysis.shouldShowPreview) {
@@ -541,6 +586,11 @@ export function createComposerPreviewController(
             : `✓ ${msg.previewReadyPlural.replace("{n}", String(analysis.formulaCount))}`;
       }
       titleGroup.appendChild(badgeEl);
+    } else if (plainMath) {
+      const badgeEl = doc.createElement("span");
+      badgeEl.className = "latex-on-x-preview-badge is-plain";
+      badgeEl.textContent = msg.plainMathBadge;
+      titleGroup.appendChild(badgeEl);
     } else {
       const hintEl = doc.createElement("span");
       hintEl.className = "latex-on-x-preview-hint";
@@ -550,6 +600,20 @@ export function createComposerPreviewController(
 
     const actionsGroup = doc.createElement("div");
     actionsGroup.className = "latex-on-x-preview-actions";
+
+    if (plainMath) {
+      const convertBtn = doc.createElement("button");
+      convertBtn.type = "button";
+      convertBtn.className = "latex-on-x-preview-convert";
+      convertBtn.setAttribute("aria-label", msg.convertLatexTooltip);
+      convertBtn.setAttribute("title", msg.convertLatexTooltip);
+      convertBtn.textContent = msg.convertLatexBtn;
+      convertBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        acceptPlainMathConversion();
+      });
+      actionsGroup.appendChild(convertBtn);
+    }
 
     if (renderedFormulaCount > 0) {
       const exportBtn = doc.createElement("button");
@@ -610,7 +674,7 @@ export function createComposerPreviewController(
 
     panel.appendChild(headerEl);
 
-    if (analysis.shouldShowPreview) {
+    if (hasPreviewBody) {
       panel.appendChild(bodyEl);
     }
 
@@ -631,7 +695,7 @@ export function createComposerPreviewController(
     // Smart formula autocomplete suggestions list (v1.1)
     if (suggestions.length > 0) {
       const listEl = doc.createElement("ul");
-      listEl.className = analysis.shouldShowPreview
+      listEl.className = hasPreviewBody
         ? "latex-on-x-suggestions"
         : "latex-on-x-suggestions is-standalone";
       listEl.setAttribute("role", "listbox");
@@ -685,7 +749,8 @@ export function createComposerPreviewController(
 
         const actionEl = doc.createElement("span");
         actionEl.className = "latex-on-x-suggestion-action";
-        actionEl.textContent = idx === 0 ? "Tab" : msg.suggestionInsertBtn;
+        actionEl.textContent =
+          idx === selectedSuggestionIdx ? "Tab" : msg.suggestionInsertBtn;
 
         itemBtn.appendChild(mainGroup);
         itemBtn.appendChild(actionEl);
@@ -728,6 +793,25 @@ export function createComposerPreviewController(
     renderPreviewNow();
   };
 
+  const acceptPlainMathConversion = (): void => {
+    if (!activeComposer || !activeComposer.isConnected || !activePlainMath) {
+      return;
+    }
+
+    const currentText = readComposerText(activeComposer);
+    const { replaceStart, replaceEnd, wrappedLatex } = activePlainMath;
+    const nextText =
+      currentText.slice(0, replaceStart) +
+      wrappedLatex +
+      currentText.slice(replaceEnd);
+    const nextCursor = replaceStart + wrappedLatex.length;
+
+    clearSuggestions();
+    debouncer?.cancel();
+    writeComposerValue(activeComposer, nextText, nextCursor, wrappedLatex);
+    renderPreviewNow();
+  };
+
   const scheduleUpdate = (): void => {
     if (!debouncer) {
       const delay = getOptions().debounceMs ?? 120;
@@ -766,23 +850,26 @@ export function createComposerPreviewController(
     if (
       !running ||
       !activeComposer ||
-      activeSuggestions.length === 0 ||
       !panelEl ||
       panelEl.style.display === "none"
     ) {
       return;
     }
 
+    const hasSuggestions = activeSuggestions.length > 0;
+    const hasPlainMath = activePlainMath !== null;
+    if (!hasSuggestions && !hasPlainMath) return;
+
     const composer = findComposerElement(event.target);
     if (!composer || composer !== activeComposer) return;
 
-    if (event.key === "ArrowDown") {
+    if (hasSuggestions && event.key === "ArrowDown") {
       event.preventDefault();
       event.stopPropagation();
       selectedSuggestionIdx =
         (selectedSuggestionIdx + 1) % activeSuggestions.length;
       syncSelectedSuggestionClass();
-    } else if (event.key === "ArrowUp") {
+    } else if (hasSuggestions && event.key === "ArrowUp") {
       event.preventDefault();
       event.stopPropagation();
       selectedSuggestionIdx =
@@ -798,7 +885,11 @@ export function createComposerPreviewController(
     ) {
       event.preventDefault();
       event.stopPropagation();
-      acceptSuggestion(selectedSuggestionIdx);
+      if (hasSuggestions) {
+        acceptSuggestion(selectedSuggestionIdx);
+      } else if (hasPlainMath) {
+        acceptPlainMathConversion();
+      }
     } else if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();

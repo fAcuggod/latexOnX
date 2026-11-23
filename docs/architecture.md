@@ -80,5 +80,10 @@ Because `src/core/` has no DOM or browser API dependencies, it is fast to test, 
     - **Accent-insensitive multilingual search:** normalizes queries with Unicode NFD decomposition to match named formulas in EN/ES/ZH via three contexts: ambient high-precision phrases (`funcion zeta de riemann`), explicit `:query` triggers, and `\command` templates.
     - **React-safe caret insertion:** updates X's controlled `<textarea>` via `HTMLTextAreaElement.prototype`'s native `value` setter + `InputEvent("input")` so React's internal state tracks every insertion, automatically wrapping bare commands in `\(...\)` when outside math delimiters and placing the caret inside the first `{}` placeholder.
 
+12. **Plain-Math AST Mini-Compiler (`src/core/plainMathCompiler.ts`):**
+    - **Four-stage pure compiler:** `tokenizePlainMath` (maximal-munch lexer) -> `parsePlainMathToAst` (recursive-descent parser respecting operator precedence, implicit multiplication, right-associative powers, and bounded recursion depth) -> `emitLatexFromAst` (unwrapping redundant parens inside `\frac`, `\sqrt`, and scripts with smart `\left(...\right)`) -> `detectPlainMathInDraft` (high-precision filter rejecting dates, scores, ratios, URLs, and prose words).
+    - **Zero-LaTeX authoring workflow:** shows a live KaTeX preview directly in X's composer for expressions like `f(x) = 5x + 2` or `(a+b)/(c-d)`, with both one-click `Convert to LaTeX` (`Tab`) and direct 3x `PNG` export.
+
+
 
 

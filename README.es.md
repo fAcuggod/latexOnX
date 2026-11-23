@@ -31,6 +31,7 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 - **Sintaxis sin colisiones:** soporta `\(...\)` en línea y `$$...$$` / `\[...\]` en bloque, dejando completamente intactos precios y *cashtags*.
 - **Vista previa en vivo al redactar:** panel flotante con *debounce* debajo del compositor de X que renderiza tus fórmulas en tiempo real y avisa antes de publicar si faltan delimitadores de cierre, llaves o hay comandos inválidos.
 - **Autocompletado inteligente y catálogo por nombre natural:** escribí nombres de fórmulas en español, inglés o chino (ej. `funcion zeta de riemann`, `formula cuadratica`, `teorema de pitagoras`), buscá con `:consulta` o completá comandos `\frac` / `\sum` presionando `Tab` o con un clic.
+- **Compilador de matemática natural con AST (`f(x) = 5x + 2` -> LaTeX):** parser recursivo descendente puro (`Lexer -> AST -> LaTeX`) que previsualiza expresiones cotidianas como `f(x) = 5x + 2`, `(a+b)/(c-d)`, `sqrt(a^2+b^2)`, `det(A) = ad - bc` o `Av = lambda v` en vivo con botón `Convertir a LaTeX` (`Tab`) o exportación directa a `PNG` 3x, ignorando fechas, puntajes y texto común.
 - **Exportación PNG 3x HiDPI en un clic:** botón `PNG` en la cabecera de la vista previa que copia una tarjeta nítida 3x adaptada al tema activo de X directo al portapapeles (pegás con `Ctrl+V` en X, con descarga `.png` automática como respaldo).
 - **Química y unidades físicas (`mhchem`):** renderiza fórmulas químicas, cargas iónicas, flechas de reacción y unidades (`\ce{...}`, `\pu{...}`), activable desde el popup.
 - **Botón opt-in para LaTeX sin delimitadores:** detecta publicaciones con comandos LaTeX/químicos inequívocos (ignorando escapes de código y rutas Windows) y muestra un botón discreto `∑ Renderizar LaTeX` / `↺ Ver original`.
@@ -54,6 +55,7 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 | **En bloque (`display`)** | `\[...\]` | `\[\int_0^1 x^2\,dx = \frac{1}{3}\]` |
 | **Química (`mhchem`)** | `\ce{...}`, `\pu{...}` | `$$\ce{CO2 + C <=> 2 CO}$$`, `\(\pu{9.8 m/s^2}\)` |
 | **Autocompletado** | Nombres naturales, `:consulta`, `\cmd` + `Tab` | `funcion zeta de riemann`, `:cuad`, `\frac` |
+| **Matemática natural** | Sintaxis algebraica + `Tab` / `Convertir` | `f(x) = 5x + 2`, `(a+b)/(c-d)`, `sqrt(a^2+b^2)` |
 | **Sin delimitadores (opt-in)** | Botón `∑ Renderizar LaTeX` | `\zeta(s) = \sum_{n=1}^{\infty} \frac{1}{n^s}` |
 | **Ignorado** | `$` simple | Precios y *cashtags* *(nunca se alteran)* |
 
@@ -107,7 +109,7 @@ Medidos con `npm run bench` sobre **10.000 publicaciones mixtas de X** (8.000 f�
 
 ```bash
 npm run typecheck   # Verifica tipos estrictos con TypeScript (tsc --noEmit)
-npm test            # Ejecuta los 105 tests unitarios, de DOM y equivalencia WASM
+npm test            # Ejecuta los 112 tests unitarios, de DOM y equivalencia WASM
 npm run test:rust   # Ejecuta los 21 tests nativos en Rust (cargo test)
 npm run build:wasm  # Recompila crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # Corre el benchmark TypeScript vs. Rust/WASM (10.000 posts)

@@ -31,6 +31,7 @@
 - **无冲突定界符：** 支持行内 `\(...\)` 以及块级 `$$...$$` / `\[...\]`，完全不干扰货币价格与金融标签。
 - **发帖实时预览与诊断：** 在 X 发帖/回复框下方浮动显示防抖（debounced）KaTeX 实时预览，并在发布前即时提示未闭合定界符、花括号不匹配及语法错误。
 - **发帖智能补全与自然名称公式库：** 在发帖框输入中/英/西公式名（如 `欧拉恒等式`、`riemann zeta`、`funcion zeta`）、使用 `:关键词` 搜索，或输入 `\frac` / `\sum` 按 `Tab` 或点击即可一键插入 LaTeX。
+- **自然数学 AST 编译器（`f(x) = 5x + 2` -> LaTeX）：** 纯递归下降解析器（`Lexer -> AST -> LaTeX`），将 `f(x) = 5x + 2`、`(a+b)/(c-d)`、`sqrt(a^2+b^2)`、`det(A) = ad - bc` 等日常数学式实时预览为 KaTeX，支持一键转为 LaTeX（`Tab`）或直接导出 3x `PNG`，并自动排除日期、比分与普通文本。
 - **一键导出 3x 高清 PNG：** 点击预览栏中的 `PNG` 按钮即可复制匹配 X 当前主题的高清公式卡片到剪贴板（在发帖框按 `Ctrl+V` 直接附带图片，不支持时自动下载 `.png`）。
 - **化学公式与物理单位（`mhchem`）：** 原生支持化学式、离子电荷、反应箭头与物理单位（`\ce{...}`、`\pu{...}`），可在弹窗中随时开关。
 - **无定界符 LaTeX 按需渲染按钮：** 精准识别未写定界符的 LaTeX/化学公式帖子（自动忽略代码转义与 Windows 路径），并在帖子下方显示简洁的 `∑ 渲染 LaTeX` / `↺ 显示原文` 按钮。
@@ -54,6 +55,7 @@
 | **块级公式（Display）** | `\[...\]` | `\[\int_0^1 x^2\,dx = \frac{1}{3}\]` |
 | **化学反应式（`mhchem`）** | `\ce{...}`, `\pu{...}` | `$$\ce{CO2 + C <=> 2 CO}$$`, `\(\pu{9.8 m/s^2}\)` |
 | **发帖智能补全** | 公式名、`:关键词`、`\命令` + `Tab` | `欧拉恒等式`、`:riemann`、`\frac` |
+| **自然数学编译** | 日常代数式 + `Tab` / `转为 LaTeX` | `f(x) = 5x + 2`, `(a+b)/(c-d)`, `sqrt(a^2+b^2)` |
 | **无定界符（按需开启）** | `∑ 渲染 LaTeX` 按钮 | `\zeta(s) = \sum_{n=1}^{\infty} \frac{1}{n^s}` |
 | **自动忽略** | 单个 `$` | 货币价格与金融标签（*绝不被修改*） |
 
@@ -107,7 +109,7 @@ npm run build:demo
 
 ```bash
 npm run typecheck   # 严格 TypeScript 类型检查（tsc --noEmit）
-npm test            # 运行全部 105 个单元测试、DOM 测试与 WASM 等价测试
+npm test            # 运行全部 112 个单元测试、DOM 测试与 WASM 等价测试
 npm run test:rust   # 运行全部 21 个原生 Rust 单元测试（cargo test）
 npm run build:wasm  # 重新编译 crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # 运行 10,000 条帖子的 TypeScript vs. Rust/WASM 基准测试
