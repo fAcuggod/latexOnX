@@ -113,7 +113,7 @@ latexOnX/
 │   └── demo/            # Live local KaTeX + mhchem sandbox
 ├── public/              # manifest.json (MV3), icons & Chrome _locales
 ├── scripts/build.mjs    # Transparent esbuild bundler + .woff2 font optimizer
-├── tests/               # 81 automated unit & DOM tests (Vitest + happy-dom)
+├── tests/               # 82 automated unit & DOM tests (Vitest + happy-dom)
 └── docs/                # Architecture & TypeScript reference guides
 ```
 
@@ -125,7 +125,7 @@ Read the full technical breakdown in [docs/architecture.md](docs/architecture.md
 
 ```bash
 npm run typecheck   # Strict TypeScript type checking (tsc --noEmit)
-npm test            # Run all 81 unit & DOM tests (Vitest + happy-dom)
+npm test            # Run all 82 unit & DOM tests (Vitest + happy-dom)
 npm run test:watch  # Watch mode for TDD
 npm run build       # Build Chrome MV3 extension into dist/
 npm run build:demo  # Build local KaTeX sandbox into dist-demo/

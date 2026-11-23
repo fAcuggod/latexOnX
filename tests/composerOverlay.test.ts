@@ -163,4 +163,74 @@ describe("composerOverlay (Milestone B.2)", () => {
       }
     }
   });
+
+  it("works on X's 2026 plain <textarea> composers (inline and inside native <dialog>) even if input events call stopPropagation", () => {
+    vi.useFakeTimers();
+
+    // 1. Plain inline <textarea> (no role, no contenteditable, no data-testid)
+    const inlineTextarea = document.createElement("textarea");
+    inlineTextarea.placeholder = "What's happening?";
+    // Simulate a React handler stopping propagation on input
+    inlineTextarea.addEventListener("input", (event) => {
+      event.stopPropagation();
+    });
+    document.body.appendChild(inlineTextarea);
+
+    // 2. Modal <textarea> inside a native <dialog>
+    const dialog = document.createElement("dialog");
+    const modalTextarea = document.createElement("textarea");
+    modalTextarea.placeholder = "What's happening?";
+    dialog.appendChild(modalTextarea);
+    document.body.appendChild(dialog);
+
+    // 3. Disabled / readonly textareas and search <input> must be ignored
+    const readonlyTextarea = document.createElement("textarea");
+    readonlyTextarea.readOnly = true;
+    readonlyTextarea.value = "$$E = mc^2$$";
+    document.body.appendChild(readonlyTextarea);
+
+    const searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.value = "$$E = mc^2$$";
+    document.body.appendChild(searchInput);
+
+    const controller = createComposerPreviewController(document, () => ({
+      locale: "en",
+      enableChemistry: true,
+      debounceMs: 50,
+    }));
+    controller.start();
+
+    // Ignored controls never open the preview
+    readonlyTextarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    searchInput.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(document.querySelector(`[${PREVIEW_PANEL_ATTR}="true"]`)).toBeNull();
+
+    // Inline <textarea>: unclosed delimiter triggers preview despite stopPropagation
+    inlineTextarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    inlineTextarea.value = "$$\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}";
+    inlineTextarea.dispatchEvent(new Event("input", { bubbles: true }));
+    vi.advanceTimersByTime(60);
+
+    const panel = document.querySelector(
+      `[${PREVIEW_PANEL_ATTR}="true"]`
+    ) as HTMLElement;
+    expect(panel).not.toBeNull();
+    expect(panel.parentElement).toBe(document.body);
+    expect(panel.style.display).toBe("block");
+    expect(panel.textContent).toContain("Unclosed $$ delimiter");
+
+    // Switching focus into a modal <dialog> composer re-hosts the panel inside <dialog>
+    inlineTextarea.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    expect(panel.style.display).toBe("none");
+
+    modalTextarea.value = "$$\\frac{a}{b$$";
+    modalTextarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(panel.parentElement).toBe(dialog);
+    expect(panel.style.display).toBe("block");
+    expect(panel.textContent).toContain("unbalanced braces");
+
+    controller.stop();
+  });
 });
+

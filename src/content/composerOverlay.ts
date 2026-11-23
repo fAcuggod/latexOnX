@@ -8,8 +8,13 @@ import { getMessages, type Locale } from "../i18n/messages.js";
 import { renderFormulaToElement } from "../renderer/katexRenderer.js";
 
 export const COMPOSER_SELECTOR =
-  '[role="textbox"][contenteditable="true"], textarea[data-latex-composer="true"]';
+  'textarea:not([disabled]):not([readonly]), [role="textbox"][contenteditable="true"], [role="textbox"][contenteditable="plaintext-only"], [contenteditable="true"][aria-multiline="true"]';
 export const PREVIEW_PANEL_ATTR = "data-latex-on-x-preview";
+
+type PopoverHTMLElement = HTMLElement & {
+  showPopover?: () => void;
+  hidePopover?: () => void;
+};
 
 export interface ComposerPreviewOptions {
   locale?: Locale;
@@ -25,7 +30,7 @@ export interface ComposerPreviewController {
 }
 
 /**
- * Extracts plain text from an X contenteditable composer or sandbox textarea,
+ * Extracts plain text from an X `<textarea>` or `contenteditable` composer,
  * preserving newlines across block elements and stripping zero-width placeholders.
  */
 export function readComposerText(el: HTMLElement): string {
@@ -42,26 +47,64 @@ export function readComposerText(el: HTMLElement): string {
 }
 
 function findComposerElement(target: EventTarget | null): HTMLElement | null {
-  if (!(target instanceof HTMLElement)) return null;
-  const match = target.closest(COMPOSER_SELECTOR);
+  const el =
+    target instanceof Element
+      ? target
+      : target instanceof Node
+        ? target.parentElement
+        : null;
+  if (!el) return null;
+  if (el.closest(`[${PREVIEW_PANEL_ATTR}="true"]`)) return null;
+  const match = el.closest(COMPOSER_SELECTOR);
   return match instanceof HTMLElement ? match : null;
+}
+
+function supportsPopover(el: HTMLElement): el is PopoverHTMLElement {
+  const candidate = el as PopoverHTMLElement;
+  return (
+    typeof candidate.showPopover === "function" &&
+    typeof candidate.hidePopover === "function"
+  );
+}
+
+function resolvePanelHost(
+  doc: Document,
+  composer: HTMLElement | null
+): Element {
+  const nativeDialog = composer?.closest("dialog");
+  if (nativeDialog) {
+    return nativeDialog;
+  }
+  return doc.body ?? doc.documentElement;
+}
+
+function parseOpaqueRgb(bg: string): [number, number, number] | null {
+  const match = bg.match(/[\d.]+/g);
+  if (!match || match.length < 3) return null;
+  const [r, g, b, a] = match.map(Number);
+  if (a !== undefined && a === 0) return null;
+  return [r, g, b];
 }
 
 /**
  * Detects whether the active page (x.com) is currently in Light, Dim, or Dark mode
- * by inspecting the computed background color of `document.body`.
+ * by inspecting the computed background color of `document.body` / `document.documentElement`.
  */
 function detectPageTheme(doc: Document): "light" | "dim" | "dark" {
-  const body = doc.body;
-  if (!body || typeof window === "undefined" || !window.getComputedStyle) {
+  if (typeof window === "undefined" || !window.getComputedStyle) {
     return "dark";
   }
 
-  const bg = window.getComputedStyle(body).backgroundColor;
-  const match = bg.match(/\d+/g);
-  if (!match || match.length < 3) return "dark";
+  const candidates = [doc.body, doc.documentElement];
+  let rgb: [number, number, number] | null = null;
+  for (const el of candidates) {
+    if (!el) continue;
+    rgb = parseOpaqueRgb(window.getComputedStyle(el).backgroundColor);
+    if (rgb) break;
+  }
+  if (!rgb) return "dark";
 
-  const [r, g, b] = match.map(Number);
+  const [r, g, b] = rgb;
   const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
   if (luminance > 180) return "light";
@@ -77,8 +120,8 @@ function formatDiagnosticLine(
 
   if (diag.kind === "unclosed_delimiter") {
     return msg.diagUnclosed
-      .replace("{open}", diag.open)
-      .replace("{close}", diag.close);
+      .replace("{open}", () => diag.open)
+      .replace("{close}", () => diag.close);
   }
 
   const prefix = msg.diagFormulaPrefix.replace(
@@ -95,11 +138,13 @@ function formatDiagnosticLine(
 
 /**
  * Creates a floating live-preview controller anchored to whichever X composer
- * (`[role="textbox"][contenteditable="true"]`) currently has focus.
+ * (`<textarea>` in X's 2026 frontend or legacy `[role="textbox"][contenteditable]`)
+ * currently has focus.
  *
- * Mounted as a portal on `document.body` so it never interferes with X's React
- * editor reconciliation, and builds every DOM node safely without `.innerHTML`
- * (100% compliant with x.com's Trusted Types CSP).
+ * Mounted as a portal (using the Top Layer Popover API when available, and hosted
+ * inside a native `<dialog>` when editing inside a modal dialog) so it never gets
+ * clipped or trapped behind modals, never interferes with React editor state, and
+ * builds every DOM node safely without `.innerHTML` (Trusted Types CSP compliant).
  */
 export function createComposerPreviewController(
   doc: Document = document,
@@ -111,8 +156,34 @@ export function createComposerPreviewController(
   let panelEl: HTMLElement | null = null;
   let debouncer: Debouncer | null = null;
 
+  const hidePopoverSafely = (panel: HTMLElement): void => {
+    if (!supportsPopover(panel)) return;
+    try {
+      if (panel.matches(":popover-open")) {
+        panel.hidePopover?.();
+      }
+    } catch {
+      // Ignore if already closed or unsupported in the current runtime
+    }
+  };
+
+  const showPanel = (panel: HTMLElement): void => {
+    panel.style.display = "block";
+    panel.setAttribute("aria-hidden", "false");
+    if (supportsPopover(panel)) {
+      try {
+        if (!panel.matches(":popover-open")) {
+          panel.showPopover?.();
+        }
+      } catch {
+        // Fall back gracefully to fixed z-index positioning
+      }
+    }
+  };
+
   const hidePanel = (): void => {
     if (panelEl) {
+      hidePopoverSafely(panelEl);
       panelEl.style.display = "none";
       panelEl.setAttribute("aria-hidden", "true");
     }
@@ -120,13 +191,19 @@ export function createComposerPreviewController(
 
   const destroyPanel = (): void => {
     if (panelEl) {
+      hidePopoverSafely(panelEl);
       panelEl.remove();
       panelEl = null;
     }
   };
 
-  const ensurePanel = (): HTMLElement => {
+  const ensurePanel = (composer: HTMLElement | null): HTMLElement => {
+    const host = resolvePanelHost(doc, composer);
     if (panelEl && panelEl.isConnected) {
+      if (panelEl.parentElement !== host) {
+        hidePopoverSafely(panelEl);
+        host.appendChild(panelEl);
+      }
       return panelEl;
     }
 
@@ -135,6 +212,9 @@ export function createComposerPreviewController(
     panel.setAttribute(PREVIEW_PANEL_ATTR, "true");
     panel.setAttribute("role", "region");
     panel.setAttribute("aria-live", "polite");
+    if (supportsPopover(panel)) {
+      panel.setAttribute("popover", "manual");
+    }
     panel.style.display = "none";
 
     // Prevent clicking inside the preview panel from stealing focus from the composer
@@ -142,7 +222,7 @@ export function createComposerPreviewController(
       event.preventDefault();
     });
 
-    (doc.body ?? doc.documentElement).appendChild(panel);
+    host.appendChild(panel);
     panelEl = panel;
     return panel;
   };
@@ -198,7 +278,7 @@ export function createComposerPreviewController(
       return;
     }
 
-    const panel = ensurePanel();
+    const panel = ensurePanel(activeComposer);
     panel.setAttribute("data-theme", detectPageTheme(doc));
     panel.textContent = "";
 
@@ -330,8 +410,7 @@ export function createComposerPreviewController(
       panel.appendChild(diagList);
     }
 
-    panel.style.display = "block";
-    panel.setAttribute("aria-hidden", "false");
+    showPanel(panel);
     positionPanel(panel, activeComposer);
   };
 
@@ -390,10 +469,13 @@ export function createComposerPreviewController(
     start(): void {
       if (running) return;
       running = true;
-      doc.addEventListener("focusin", onFocusIn);
-      doc.addEventListener("focusout", onFocusOut);
-      doc.addEventListener("input", onInputOrKey);
-      doc.addEventListener("keyup", onInputOrKey);
+      doc.addEventListener("focusin", onFocusIn, true);
+      doc.addEventListener("focusout", onFocusOut, true);
+      doc.addEventListener("input", onInputOrKey, true);
+      doc.addEventListener("keyup", onInputOrKey, true);
+      doc.addEventListener("paste", onInputOrKey, true);
+      doc.addEventListener("cut", onInputOrKey, true);
+      doc.addEventListener("compositionend", onInputOrKey, true);
       window.addEventListener("resize", onViewportChange);
       window.addEventListener("scroll", onViewportChange, true);
 
@@ -413,10 +495,13 @@ export function createComposerPreviewController(
       activeComposer = null;
       dismissedForText = null;
 
-      doc.removeEventListener("focusin", onFocusIn);
-      doc.removeEventListener("focusout", onFocusOut);
-      doc.removeEventListener("input", onInputOrKey);
-      doc.removeEventListener("keyup", onInputOrKey);
+      doc.removeEventListener("focusin", onFocusIn, true);
+      doc.removeEventListener("focusout", onFocusOut, true);
+      doc.removeEventListener("input", onInputOrKey, true);
+      doc.removeEventListener("keyup", onInputOrKey, true);
+      doc.removeEventListener("paste", onInputOrKey, true);
+      doc.removeEventListener("cut", onInputOrKey, true);
+      doc.removeEventListener("compositionend", onInputOrKey, true);
       window.removeEventListener("resize", onViewportChange);
       window.removeEventListener("scroll", onViewportChange, true);
 

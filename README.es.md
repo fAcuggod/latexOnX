@@ -91,7 +91,7 @@ Abrí `dist-demo/index.html` en tu navegador para probar fórmulas en los 3 tema
 
 ```bash
 npm run typecheck   # Verifica tipos estrictos con TypeScript (tsc --noEmit)
-npm test            # Ejecuta los 81 tests unitarios y de DOM (Vitest + happy-dom)
+npm test            # Ejecuta los 82 tests unitarios y de DOM (Vitest + happy-dom)
 npm run test:watch  # Modo watch para TDD
 npm run build       # Compila la extensión Chrome MV3 en dist/
 npm run build:demo  # Compila el sandbox local en dist-demo/

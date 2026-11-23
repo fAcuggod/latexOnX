@@ -111,7 +111,11 @@
 /* Floating Live Composer Preview Panel (Light / Dim / Dark adaptive) */
 .latex-on-x-preview-panel {
   position: fixed;
-  z-index: 99999;
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  z-index: 2147483647;
   border-radius: 14px;
   border: 1px solid #2f3336;
   background-color: #16181c;

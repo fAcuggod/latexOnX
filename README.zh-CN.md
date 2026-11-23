@@ -91,7 +91,7 @@ npm run build:demo
 
 ```bash
 npm run typecheck   # 严格 TypeScript 类型检查（tsc --noEmit）
-npm test            # 运行全部 81 个单元测试与 DOM 测试（Vitest + happy-dom）
+npm test            # 运行全部 82 个单元测试与 DOM 测试（Vitest + happy-dom）
 npm run test:watch  # TDD 监听模式
 npm run build       # 构建 Chrome MV3 扩展至 dist/
 npm run build:demo  # 构建本地 KaTeX 沙盒至 dist-demo/
