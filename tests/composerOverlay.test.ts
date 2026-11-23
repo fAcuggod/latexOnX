@@ -288,6 +288,68 @@ describe("composerOverlay (Milestone B.2)", () => {
 
     controller.stop();
   });
+
+  it("suggests named formulas for natural phrases and inserts LaTeX via Tab without using .innerHTML", () => {
+    vi.useFakeTimers();
+
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+
+    const controller = createComposerPreviewController(document, () => ({
+      locale: "es",
+      enableChemistry: true,
+      debounceMs: 50,
+    }));
+    controller.start();
+
+    // User types plain Spanish phrase without knowing LaTeX
+    textarea.value = "Mirar la funcion zeta de riemann";
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+
+    const panel = document.querySelector(
+      `[${PREVIEW_PANEL_ATTR}="true"]`
+    ) as HTMLElement;
+    expect(panel).not.toBeNull();
+    expect(panel.style.display).toBe("block");
+    expect(panel.textContent).toContain("Sugerencias de fórmulas");
+    expect(panel.textContent).toContain("Función zeta de Riemann");
+    expect(panel.querySelector(".latex-on-x-suggestion-formula .katex")).not.toBeNull();
+
+    // Press Tab -> replaces natural phrase with full LaTeX and immediately shows live preview + PNG
+    const tabEvent = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    textarea.dispatchEvent(tabEvent);
+    expect(tabEvent.defaultPrevented).toBe(true);
+    expect(textarea.value).toBe(
+      "Mirar la $$\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}$$"
+    );
+    expect(panel.textContent).toContain("1 fórmula lista");
+    expect(panel.querySelector(".latex-on-x-preview-export")).not.toBeNull();
+
+    // Command autocomplete inside math places cursor inside first `{}` placeholder
+    textarea.value = "$$\\fr";
+    textarea.setSelectionRange(5, 5);
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    vi.advanceTimersByTime(60);
+
+    expect(panel.querySelectorAll(".latex-on-x-suggestion-item").length).toBeGreaterThan(0);
+    textarea.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+    expect(textarea.value).toBe("$$\\frac{}{}");
+    expect(textarea.selectionStart).toBe(8);
+
+    controller.stop();
+  });
 });
+
 
 

@@ -281,3 +281,112 @@
   background-color: rgba(255, 173, 31, 0.12);
 }
 
+/* Smart Formula Autocomplete Suggestions (v1.1) */
+.latex-on-x-preview-hint {
+  font-size: 11px;
+  color: #71767b;
+  white-space: nowrap;
+}
+
+.latex-on-x-suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  border-top: 1px solid rgba(113, 118, 123, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.latex-on-x-suggestions.is-standalone {
+  border-top: none;
+}
+
+.latex-on-x-suggestion-item {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  transition: background-color 110ms ease, border-color 110ms ease;
+}
+
+.latex-on-x-suggestion-item:hover,
+.latex-on-x-suggestion-item.is-selected {
+  background-color: rgba(29, 155, 240, 0.13);
+  border-color: rgba(29, 155, 240, 0.35);
+}
+
+.latex-on-x-suggestion-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.latex-on-x-suggestion-formula {
+  flex-shrink: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+
+.latex-on-x-suggestion-formula .katex {
+  font-size: 0.98em;
+  color: inherit;
+}
+
+.latex-on-x-suggestion-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.latex-on-x-suggestion-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.latex-on-x-suggestion-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  opacity: 0.65;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.latex-on-x-suggestion-action {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(113, 118, 123, 0.35);
+  color: #1d9bf0;
+  background-color: rgba(29, 155, 240, 0.08);
+}
+
+.latex-on-x-suggestion-item.is-selected .latex-on-x-suggestion-action {
+  background-color: #1d9bf0;
+  border-color: #1d9bf0;
+  color: #ffffff;
+}
+
+

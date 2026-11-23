@@ -4,6 +4,12 @@ import {
   type ComposerDiagnostic,
   type Debouncer,
 } from "../core/composerPreview.js";
+import {
+  applyFormulaInsertion,
+  extractAutocompleteContext,
+  searchFormulaCatalog,
+  type FormulaMatch,
+} from "../core/formulaCatalog.js";
 import type { ExportTheme } from "../core/pngExporter.js";
 import { getMessages, type Locale } from "../i18n/messages.js";
 import { renderFormulaToElement } from "../renderer/katexRenderer.js";
@@ -54,6 +60,87 @@ export function readComposerText(el: HTMLElement): string {
       : (el.textContent ?? "");
 
   return raw.replace(/\u200B/g, "");
+}
+
+/**
+ * Reads the current caret character offset inside a `<textarea>` or `contenteditable`.
+ */
+export function readComposerCursor(el: HTMLElement, text: string): number {
+  if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
+    return typeof el.selectionStart === "number" ? el.selectionStart : text.length;
+  }
+
+  if (typeof window !== "undefined" && window.getSelection) {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && sel.focusNode && el.contains(sel.focusNode)) {
+      try {
+        const range = el.ownerDocument.createRange();
+        range.selectNodeContents(el);
+        range.setEnd(sel.focusNode, sel.focusOffset);
+        return range.toString().replace(/\u200B/g, "").length;
+      } catch {
+        return text.length;
+      }
+    }
+  }
+
+  return text.length;
+}
+
+/**
+ * Writes updated text + caret offset into a React-controlled `<textarea>` (using
+ * the native prototype setter so React's `_valueTracker` registers the change) or
+ * a legacy `contenteditable` composer, then dispatches a bubbling `input` event.
+ */
+export function writeComposerValue(
+  el: HTMLElement,
+  nextText: string,
+  nextCursorPos: number,
+  inserted: string
+): void {
+  if (el instanceof HTMLTextAreaElement) {
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value"
+    )?.set;
+    if (nativeSetter) {
+      nativeSetter.call(el, nextText);
+    } else {
+      el.value = nextText;
+    }
+    try {
+      el.setSelectionRange(nextCursorPos, nextCursorPos);
+    } catch {
+      // Ignore in environments without selection range support
+    }
+  } else {
+    el.textContent = nextText;
+    if (typeof window !== "undefined" && window.getSelection && el.firstChild) {
+      try {
+        const sel = window.getSelection();
+        const range = el.ownerDocument.createRange();
+        const offset = Math.min(nextCursorPos, el.firstChild.textContent?.length ?? 0);
+        range.setStart(el.firstChild, offset);
+        range.collapse(true);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      } catch {
+        // Ignore selection placement errors on complex contenteditable trees
+      }
+    }
+  }
+
+  try {
+    el.dispatchEvent(
+      new InputEvent("input", {
+        bubbles: true,
+        inputType: "insertText",
+        data: inserted,
+      })
+    );
+  } catch {
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }
 }
 
 function findComposerElement(target: EventTarget | null): HTMLElement | null {
@@ -185,6 +272,31 @@ export function createComposerPreviewController(
   let dismissedForText: string | null = null;
   let panelEl: HTMLElement | null = null;
   let debouncer: Debouncer | null = null;
+  let activeSuggestions: FormulaMatch[] = [];
+  let selectedSuggestionIdx = 0;
+  let lastSuggestionSignature = "";
+
+  const clearSuggestions = (): void => {
+    activeSuggestions = [];
+    selectedSuggestionIdx = 0;
+    lastSuggestionSignature = "";
+  };
+
+  const syncSelectedSuggestionClass = (): void => {
+    if (!panelEl) return;
+    const locale: Locale = getOptions().locale ?? "en";
+    const insertLabel = getMessages(locale).suggestionInsertBtn;
+    const buttons = panelEl.querySelectorAll(".latex-on-x-suggestion-item");
+    buttons.forEach((btn, idx) => {
+      const selected = idx === selectedSuggestionIdx;
+      btn.classList.toggle("is-selected", selected);
+      btn.setAttribute("aria-selected", selected ? "true" : "false");
+      const actionEl = btn.querySelector(".latex-on-x-suggestion-action");
+      if (actionEl) {
+        actionEl.textContent = selected ? "Tab" : insertLabel;
+      }
+    });
+  };
 
   const hidePopoverSafely = (panel: HTMLElement): void => {
     if (!supportsPopover(panel)) return;
@@ -286,12 +398,14 @@ export function createComposerPreviewController(
 
   const renderPreviewNow = (): void => {
     if (!running || !activeComposer || !activeComposer.isConnected) {
+      clearSuggestions();
       hidePanel();
       return;
     }
 
     const text = readComposerText(activeComposer);
     if (dismissedForText !== null && text === dismissedForText) {
+      clearSuggestions();
       hidePanel();
       return;
     }
@@ -303,17 +417,33 @@ export function createComposerPreviewController(
     const msg = getMessages(locale);
 
     const analysis = analyzeComposerDraft(text, { enableChemistry });
-    if (!analysis.shouldShowPreview) {
+
+    const cursorPos = readComposerCursor(activeComposer, text);
+    const acCtx = extractAutocompleteContext(text, cursorPos);
+    const suggestions = acCtx ? searchFormulaCatalog(acCtx, locale, 5) : [];
+
+    if (!analysis.shouldShowPreview && suggestions.length === 0) {
+      clearSuggestions();
       hidePanel();
       return;
     }
+
+    const sig = suggestions
+      .map((s) => `${s.entry.id}:${s.replaceStart}:${s.replaceEnd}`)
+      .join("|");
+    if (sig !== lastSuggestionSignature) {
+      selectedSuggestionIdx = 0;
+      lastSuggestionSignature = sig;
+    } else if (selectedSuggestionIdx >= suggestions.length) {
+      selectedSuggestionIdx = 0;
+    }
+    activeSuggestions = suggestions;
 
     const panel = ensurePanel(activeComposer);
     const currentTheme = detectPageTheme(doc);
     panel.setAttribute("data-theme", currentTheme);
     panel.textContent = "";
 
-    // Build preview content first so we also capture any KaTeX syntax errors
     const bodyEl = doc.createElement("div");
     bodyEl.className = "latex-on-x-preview-body";
 
@@ -323,55 +453,58 @@ export function createComposerPreviewController(
       message: string;
     }> = [];
 
-    const erroredFormulaIndices = new Set<number>();
-    for (const diag of analysis.diagnostics) {
-      if (
-        diag.kind === "validation_error" ||
-        diag.kind === "chemistry_disabled"
-      ) {
-        erroredFormulaIndices.add(diag.formulaIndex);
-      }
-    }
-
-    let formulaIdx = 0;
     let renderedFormulaCount = 0;
-    for (const seg of analysis.segments) {
-      if (seg.type === "text") {
-        bodyEl.appendChild(doc.createTextNode(seg.content));
-      } else {
-        const currentIdx = formulaIdx;
-        formulaIdx += 1;
 
-        if (erroredFormulaIndices.has(currentIdx)) {
-          const badSpan = doc.createElement("span");
-          badSpan.className = "latex-on-x-preview-error-chip";
-          badSpan.textContent = seg.raw;
-          bodyEl.appendChild(badSpan);
-          continue;
+    if (analysis.shouldShowPreview) {
+      const erroredFormulaIndices = new Set<number>();
+      for (const diag of analysis.diagnostics) {
+        if (
+          diag.kind === "validation_error" ||
+          diag.kind === "chemistry_disabled"
+        ) {
+          erroredFormulaIndices.add(diag.formulaIndex);
         }
+      }
 
-        const wrapper = doc.createElement("span");
-        const result = renderFormulaToElement(seg.content, seg.mode, wrapper, {
-          enableChemistry,
-        });
-
-        if (!result.ok) {
-          const badSpan = doc.createElement("span");
-          badSpan.className = "latex-on-x-preview-error-chip";
-          badSpan.textContent = seg.raw;
-          bodyEl.appendChild(badSpan);
-          extraKatexErrors.push({
-            kind: "katex_error",
-            formulaIndex: currentIdx,
-            message: result.message,
-          });
+      let formulaIdx = 0;
+      for (const seg of analysis.segments) {
+        if (seg.type === "text") {
+          bodyEl.appendChild(doc.createTextNode(seg.content));
         } else {
-          renderedFormulaCount += 1;
-          wrapper.className =
-            seg.mode === "display"
-              ? "latex-on-x-formula latex-on-x-display"
-              : "latex-on-x-formula latex-on-x-inline";
-          bodyEl.appendChild(wrapper);
+          const currentIdx = formulaIdx;
+          formulaIdx += 1;
+
+          if (erroredFormulaIndices.has(currentIdx)) {
+            const badSpan = doc.createElement("span");
+            badSpan.className = "latex-on-x-preview-error-chip";
+            badSpan.textContent = seg.raw;
+            bodyEl.appendChild(badSpan);
+            continue;
+          }
+
+          const wrapper = doc.createElement("span");
+          const result = renderFormulaToElement(seg.content, seg.mode, wrapper, {
+            enableChemistry,
+          });
+
+          if (!result.ok) {
+            const badSpan = doc.createElement("span");
+            badSpan.className = "latex-on-x-preview-error-chip";
+            badSpan.textContent = seg.raw;
+            bodyEl.appendChild(badSpan);
+            extraKatexErrors.push({
+              kind: "katex_error",
+              formulaIndex: currentIdx,
+              message: result.message,
+            });
+          } else {
+            renderedFormulaCount += 1;
+            wrapper.className =
+              seg.mode === "display"
+                ? "latex-on-x-formula latex-on-x-display"
+                : "latex-on-x-formula latex-on-x-inline";
+            bodyEl.appendChild(wrapper);
+          }
         }
       }
     }
@@ -387,25 +520,33 @@ export function createComposerPreviewController(
 
     const titleEl = doc.createElement("span");
     titleEl.className = "latex-on-x-preview-title";
-    titleEl.textContent = `∑ ${msg.previewTitle}`;
-
-    const badgeEl = doc.createElement("span");
-    if (allDiagnostics.length > 0) {
-      badgeEl.className = "latex-on-x-preview-badge is-warning";
-      badgeEl.textContent =
-        allDiagnostics.length === 1
-          ? `⚠ ${msg.previewIssueSingular}`
-          : `⚠ ${msg.previewIssuePlural.replace("{n}", String(allDiagnostics.length))}`;
-    } else {
-      badgeEl.className = "latex-on-x-preview-badge is-ok";
-      badgeEl.textContent =
-        analysis.formulaCount === 1
-          ? `✓ ${msg.previewReadySingular}`
-          : `✓ ${msg.previewReadyPlural.replace("{n}", String(analysis.formulaCount))}`;
-    }
-
+    titleEl.textContent = analysis.shouldShowPreview
+      ? `∑ ${msg.previewTitle}`
+      : `∑ ${msg.suggestionsTitle}`;
     titleGroup.appendChild(titleEl);
-    titleGroup.appendChild(badgeEl);
+
+    if (analysis.shouldShowPreview) {
+      const badgeEl = doc.createElement("span");
+      if (allDiagnostics.length > 0) {
+        badgeEl.className = "latex-on-x-preview-badge is-warning";
+        badgeEl.textContent =
+          allDiagnostics.length === 1
+            ? `⚠ ${msg.previewIssueSingular}`
+            : `⚠ ${msg.previewIssuePlural.replace("{n}", String(allDiagnostics.length))}`;
+      } else {
+        badgeEl.className = "latex-on-x-preview-badge is-ok";
+        badgeEl.textContent =
+          analysis.formulaCount === 1
+            ? `✓ ${msg.previewReadySingular}`
+            : `✓ ${msg.previewReadyPlural.replace("{n}", String(analysis.formulaCount))}`;
+      }
+      titleGroup.appendChild(badgeEl);
+    } else {
+      const hintEl = doc.createElement("span");
+      hintEl.className = "latex-on-x-preview-hint";
+      hintEl.textContent = msg.suggestionsHint;
+      titleGroup.appendChild(hintEl);
+    }
 
     const actionsGroup = doc.createElement("div");
     actionsGroup.className = "latex-on-x-preview-actions";
@@ -459,6 +600,7 @@ export function createComposerPreviewController(
     closeBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       dismissedForText = text;
+      clearSuggestions();
       hidePanel();
     });
 
@@ -467,7 +609,10 @@ export function createComposerPreviewController(
     headerEl.appendChild(actionsGroup);
 
     panel.appendChild(headerEl);
-    panel.appendChild(bodyEl);
+
+    if (analysis.shouldShowPreview) {
+      panel.appendChild(bodyEl);
+    }
 
     // Diagnostics footer (only when there are warnings/errors)
     if (allDiagnostics.length > 0) {
@@ -483,8 +628,104 @@ export function createComposerPreviewController(
       panel.appendChild(diagList);
     }
 
+    // Smart formula autocomplete suggestions list (v1.1)
+    if (suggestions.length > 0) {
+      const listEl = doc.createElement("ul");
+      listEl.className = analysis.shouldShowPreview
+        ? "latex-on-x-suggestions"
+        : "latex-on-x-suggestions is-standalone";
+      listEl.setAttribute("role", "listbox");
+
+      suggestions.forEach((match, idx) => {
+        const li = doc.createElement("li");
+        const itemBtn = doc.createElement("button");
+        itemBtn.type = "button";
+        itemBtn.className =
+          idx === selectedSuggestionIdx
+            ? "latex-on-x-suggestion-item is-selected"
+            : "latex-on-x-suggestion-item";
+        itemBtn.setAttribute("role", "option");
+        itemBtn.setAttribute(
+          "aria-selected",
+          idx === selectedSuggestionIdx ? "true" : "false"
+        );
+
+        const mainGroup = doc.createElement("div");
+        mainGroup.className = "latex-on-x-suggestion-main";
+
+        const formulaSpan = doc.createElement("span");
+        formulaSpan.className = "latex-on-x-suggestion-formula";
+        const previewRes = renderFormulaToElement(
+          match.entry.previewLatex,
+          match.entry.previewMode,
+          formulaSpan,
+          { enableChemistry }
+        );
+        if (!previewRes.ok) {
+          formulaSpan.textContent = match.entry.snippet;
+        }
+
+        const metaGroup = doc.createElement("div");
+        metaGroup.className = "latex-on-x-suggestion-meta";
+
+        const labelEl = doc.createElement("span");
+        labelEl.className = "latex-on-x-suggestion-label";
+        labelEl.textContent = match.entry.labels[locale];
+        metaGroup.appendChild(labelEl);
+
+        if (match.entry.category === "command") {
+          const codeEl = doc.createElement("span");
+          codeEl.className = "latex-on-x-suggestion-code";
+          codeEl.textContent = match.entry.snippet.trim();
+          metaGroup.appendChild(codeEl);
+        }
+
+        mainGroup.appendChild(formulaSpan);
+        mainGroup.appendChild(metaGroup);
+
+        const actionEl = doc.createElement("span");
+        actionEl.className = "latex-on-x-suggestion-action";
+        actionEl.textContent = idx === 0 ? "Tab" : msg.suggestionInsertBtn;
+
+        itemBtn.appendChild(mainGroup);
+        itemBtn.appendChild(actionEl);
+
+        itemBtn.addEventListener("mouseenter", () => {
+          selectedSuggestionIdx = idx;
+          syncSelectedSuggestionClass();
+        });
+
+        itemBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          acceptSuggestion(idx);
+        });
+
+        li.appendChild(itemBtn);
+        listEl.appendChild(li);
+      });
+
+      panel.appendChild(listEl);
+    }
+
     showPanel(panel);
     positionPanel(panel, activeComposer);
+  };
+
+  const acceptSuggestion = (index: number): void => {
+    if (!activeComposer || !activeComposer.isConnected) return;
+    const match = activeSuggestions[index];
+    if (!match) return;
+
+    const currentText = readComposerText(activeComposer);
+    const { text: nextText, cursorPos, inserted } = applyFormulaInsertion(
+      currentText,
+      match
+    );
+
+    clearSuggestions();
+    debouncer?.cancel();
+    writeComposerValue(activeComposer, nextText, cursorPos, inserted);
+    renderPreviewNow();
   };
 
   const scheduleUpdate = (): void => {
@@ -517,10 +758,68 @@ export function createComposerPreviewController(
 
     debouncer?.cancel();
     activeComposer = null;
+    clearSuggestions();
     hidePanel();
   };
 
+  const onKeyDown = (event: KeyboardEvent): void => {
+    if (
+      !running ||
+      !activeComposer ||
+      activeSuggestions.length === 0 ||
+      !panelEl ||
+      panelEl.style.display === "none"
+    ) {
+      return;
+    }
+
+    const composer = findComposerElement(event.target);
+    if (!composer || composer !== activeComposer) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      event.stopPropagation();
+      selectedSuggestionIdx =
+        (selectedSuggestionIdx + 1) % activeSuggestions.length;
+      syncSelectedSuggestionClass();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      event.stopPropagation();
+      selectedSuggestionIdx =
+        (selectedSuggestionIdx - 1 + activeSuggestions.length) %
+        activeSuggestions.length;
+      syncSelectedSuggestionClass();
+    } else if (
+      event.key === "Tab" &&
+      !event.shiftKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      acceptSuggestion(selectedSuggestionIdx);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      dismissedForText = readComposerText(activeComposer);
+      clearSuggestions();
+      hidePanel();
+    }
+  };
+
   const onInputOrKey = (event: Event): void => {
+    if (
+      event instanceof KeyboardEvent &&
+      event.type === "keyup" &&
+      (event.key === "ArrowDown" ||
+        event.key === "ArrowUp" ||
+        event.key === "Tab" ||
+        event.key === "Escape")
+    ) {
+      return;
+    }
+
     const composer = findComposerElement(event.target);
     if (!composer) return;
     activeComposer = composer;
@@ -544,8 +843,10 @@ export function createComposerPreviewController(
       running = true;
       doc.addEventListener("focusin", onFocusIn, true);
       doc.addEventListener("focusout", onFocusOut, true);
+      doc.addEventListener("keydown", onKeyDown, true);
       doc.addEventListener("input", onInputOrKey, true);
       doc.addEventListener("keyup", onInputOrKey, true);
+      doc.addEventListener("click", onInputOrKey, true);
       doc.addEventListener("paste", onInputOrKey, true);
       doc.addEventListener("cut", onInputOrKey, true);
       doc.addEventListener("compositionend", onInputOrKey, true);
@@ -567,11 +868,14 @@ export function createComposerPreviewController(
       debouncer = null;
       activeComposer = null;
       dismissedForText = null;
+      clearSuggestions();
 
       doc.removeEventListener("focusin", onFocusIn, true);
       doc.removeEventListener("focusout", onFocusOut, true);
+      doc.removeEventListener("keydown", onKeyDown, true);
       doc.removeEventListener("input", onInputOrKey, true);
       doc.removeEventListener("keyup", onInputOrKey, true);
+      doc.removeEventListener("click", onInputOrKey, true);
       doc.removeEventListener("paste", onInputOrKey, true);
       doc.removeEventListener("cut", onInputOrKey, true);
       doc.removeEventListener("compositionend", onInputOrKey, true);

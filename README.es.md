@@ -30,6 +30,7 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 
 - **Sintaxis sin colisiones:** soporta `\(...\)` en línea y `$$...$$` / `\[...\]` en bloque, dejando completamente intactos precios y *cashtags*.
 - **Vista previa en vivo al redactar:** panel flotante con *debounce* debajo del compositor de X que renderiza tus fórmulas en tiempo real y avisa antes de publicar si faltan delimitadores de cierre, llaves o hay comandos inválidos.
+- **Autocompletado inteligente y catálogo por nombre natural:** escribí nombres de fórmulas en español, inglés o chino (ej. `funcion zeta de riemann`, `formula cuadratica`, `teorema de pitagoras`), buscá con `:consulta` o completá comandos `\frac` / `\sum` presionando `Tab` o con un clic.
 - **Exportación PNG 3x HiDPI en un clic:** botón `PNG` en la cabecera de la vista previa que copia una tarjeta nítida 3x adaptada al tema activo de X directo al portapapeles (pegás con `Ctrl+V` en X, con descarga `.png` automática como respaldo).
 - **Química y unidades físicas (`mhchem`):** renderiza fórmulas químicas, cargas iónicas, flechas de reacción y unidades (`\ce{...}`, `\pu{...}`), activable desde el popup.
 - **Botón opt-in para LaTeX sin delimitadores:** detecta publicaciones con comandos LaTeX/químicos inequívocos (ignorando escapes de código y rutas Windows) y muestra un botón discreto `∑ Renderizar LaTeX` / `↺ Ver original`.
@@ -52,6 +53,7 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 | **En bloque (`display`)** | `$$...$$` | `$$\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}$$` |
 | **En bloque (`display`)** | `\[...\]` | `\[\int_0^1 x^2\,dx = \frac{1}{3}\]` |
 | **Química (`mhchem`)** | `\ce{...}`, `\pu{...}` | `$$\ce{CO2 + C <=> 2 CO}$$`, `\(\pu{9.8 m/s^2}\)` |
+| **Autocompletado** | Nombres naturales, `:consulta`, `\cmd` + `Tab` | `funcion zeta de riemann`, `:cuad`, `\frac` |
 | **Sin delimitadores (opt-in)** | Botón `∑ Renderizar LaTeX` | `\zeta(s) = \sum_{n=1}^{\infty} \frac{1}{n^s}` |
 | **Ignorado** | `$` simple | Precios y *cashtags* *(nunca se alteran)* |
 
@@ -105,7 +107,7 @@ Medidos con `npm run bench` sobre **10.000 publicaciones mixtas de X** (8.000 f�
 
 ```bash
 npm run typecheck   # Verifica tipos estrictos con TypeScript (tsc --noEmit)
-npm test            # Ejecuta los 98 tests unitarios, de DOM y equivalencia WASM
+npm test            # Ejecuta los 105 tests unitarios, de DOM y equivalencia WASM
 npm run test:rust   # Ejecuta los 21 tests nativos en Rust (cargo test)
 npm run build:wasm  # Recompila crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # Corre el benchmark TypeScript vs. Rust/WASM (10.000 posts)

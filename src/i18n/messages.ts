@@ -42,6 +42,9 @@ export interface Messages {
   exportPngCopied: string;
   exportPngSaved: string;
   exportPngError: string;
+  suggestionsTitle: string;
+  suggestionsHint: string;
+  suggestionInsertBtn: string;
   languageLabel: string;
 }
 
@@ -86,6 +89,9 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     exportPngCopied: "PNG copied ✓",
     exportPngSaved: "PNG saved ✓",
     exportPngError: "Export failed",
+    suggestionsTitle: "Formula suggestions",
+    suggestionsHint: "Tab or click to insert",
+    suggestionInsertBtn: "Insert",
     languageLabel: "Language",
   },
   es: {
@@ -128,6 +134,9 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     exportPngCopied: "PNG copiado ✓",
     exportPngSaved: "PNG guardado ✓",
     exportPngError: "Error al exportar",
+    suggestionsTitle: "Sugerencias de fórmulas",
+    suggestionsHint: "Tab o clic para insertar",
+    suggestionInsertBtn: "Insertar",
     languageLabel: "Idioma",
   },
   zh: {
@@ -170,6 +179,9 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     exportPngCopied: "已复制 PNG ✓",
     exportPngSaved: "已保存 PNG ✓",
     exportPngError: "导出失败",
+    suggestionsTitle: "公式建议",
+    suggestionsHint: "按 Tab 或点击插入",
+    suggestionInsertBtn: "插入",
     languageLabel: "语言",
   },
 };

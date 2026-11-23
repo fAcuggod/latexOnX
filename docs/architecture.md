@@ -76,4 +76,9 @@ Because `src/core/` has no DOM or browser API dependencies, it is fast to test, 
     - **Zero-copy Rust core:** mirrors `src/core/parser.ts` and `src/core/validator.ts` using borrowed `&'a str` slices, algebraic `enum` types, and a UTF-8-safe ASCII byte fast-path (`21` native `cargo test` cases).
     - **Linear-memory WASM ABI:** compiles directly to `src/wasm/latex_core.wasm` (`37.5 KB`, zero external crates) using a flat `u32` offset table and reusable scratch buffer (`src/wasm/wasmCore.ts`), verified by differential equivalence tests (`tests/wasmCore.test.ts`) and benchmarked at up to **8.02x** throughput vs. V8 JIT TypeScript over 10,000 posts.
 
+11. **Smart Composer Autocomplete & Natural-Name Formula Catalog (`src/core/formulaCatalog.ts` & `src/content/composerOverlay.ts`):**
+    - **Accent-insensitive multilingual search:** normalizes queries with Unicode NFD decomposition to match named formulas in EN/ES/ZH via three contexts: ambient high-precision phrases (`funcion zeta de riemann`), explicit `:query` triggers, and `\command` templates.
+    - **React-safe caret insertion:** updates X's controlled `<textarea>` via `HTMLTextAreaElement.prototype`'s native `value` setter + `InputEvent("input")` so React's internal state tracks every insertion, automatically wrapping bare commands in `\(...\)` when outside math delimiters and placing the caret inside the first `{}` placeholder.
+
+
 

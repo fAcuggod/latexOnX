@@ -31,6 +31,7 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 
 - **Collision-free delimiters:** supports `\(...\)` inline and `$$...$$` / `\[...\]` display blocks, leaving single-dollar currency notation and cashtags completely untouched.
 - **Live composer preview & diagnostics:** floating, debounced KaTeX preview directly below X's post/reply composer, highlighting unclosed delimiters, unbalanced braces, disallowed macros, and syntax errors *before* posting.
+- **Smart composer autocomplete & natural-name formula catalog:** type famous formula names in English, Spanish, or Chinese (e.g. `riemann zeta`, `funcion zeta de riemann`, `formula cuadratica`, `欧拉恒等式`), search with `:query`, or type `\frac` / `\sum` commands and press `Tab` (or click) to insert ready-to-render LaTeX.
 - **One-click 3x HiDPI PNG export:** click `PNG` in the live preview header to copy a crisp 3x formula card matching X's Light, Dim, or Lights Out theme directly to your clipboard (paste into X with `Ctrl+V`, with automatic `.png` download fallback).
 - **Chemistry & physical units (`mhchem`):** natively renders chemical formulas, ionic charges, reaction arrows, and physical units (`\ce{...}`, `\pu{...}`), toggleable from the popup.
 - **Opt-in undelimited LaTeX button:** detects posts containing unambiguous raw LaTeX/chemistry commands (ignoring code escapes and Windows paths) and offers a discrete `∑ Render LaTeX` / `↺ Show raw` toggle right below the post.
@@ -53,6 +54,7 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 | **Display block** | `$$...$$` | `$$\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}$$` |
 | **Display block** | `\[...\]` | `\[\int_0^1 x^2\,dx = \frac{1}{3}\]` |
 | **Chemistry (`mhchem`)** | `\ce{...}`, `\pu{...}` | `$$\ce{CO2 + C <=> 2 CO}$$`, `\(\pu{9.8 m/s^2}\)` |
+| **Composer autocomplete** | Natural names, `:query`, `\cmd` + `Tab` | `riemann zeta`, `:cuad`, `\frac` |
 | **Undelimited (opt-in)** | `∑ Render LaTeX` button | `\zeta(s) = \sum_{n=1}^{\infty} \frac{1}{n^s}` |
 | **Ignored** | Single `$` | Currency notation & cashtags *(never altered)* |
 
@@ -107,6 +109,7 @@ latexOnX/
 │   │   ├── validator.ts       # Anti-DoS validator (length, brace depth, disallowed macros)
 │   │   ├── detector.ts        # High-precision bare-LaTeX & chemistry detector/segmenter
 │   │   ├── composerPreview.ts # Draft analyzer, unclosed delimiter detector & debouncer
+│   │   ├── formulaCatalog.ts  # Multilingual natural-name formula catalog & command autocomplete
 │   │   └── pngExporter.ts     # 3x HiDPI export geometry, CSS font rewriter & SVG builder
 │   ├── wasm/            # Compiled WebAssembly module + linear-memory TypeScript bridge
 │   │   ├── latex_core.wasm    # 37.5 KB release wasm32 binary
@@ -115,7 +118,7 @@ latexOnX/
 │   │   └── katexRenderer.ts # Trusted-Types-safe KaTeX + mhchem pipeline (HTML + MathML)
 │   ├── content/         # Browser layer (Chrome Manifest V3)
 │   │   ├── domProcessor.ts       # Safe TreeWalker, opt-in button bar, restore & copy
-│   │   ├── composerOverlay.ts    # Floating Trusted-Types-safe live composer preview portal
+│   │   ├── composerOverlay.ts    # Floating preview portal, autocomplete & PNG export trigger
 │   │   ├── formulaImageExport.ts # Base64 font embedder, SVG-to-Canvas PNG & clipboard export
 │   │   ├── observer.ts           # rAF-batched MutationObserver for SPA/infinite scroll
 │   │   ├── index.ts              # Entry point synced with chrome.storage.sync
@@ -125,7 +128,7 @@ latexOnX/
 │   └── demo/            # Live local KaTeX + mhchem sandbox
 ├── public/              # manifest.json (MV3), icons & Chrome _locales
 ├── scripts/             # build.mjs, build-wasm.mjs & benchmark.mjs
-├── tests/               # 98 automated Vitest unit, DOM & WASM equivalence tests
+├── tests/               # 105 automated Vitest unit, DOM & WASM equivalence tests
 └── docs/                # Architecture, TypeScript & Rust/WASM guides
 ```
 
@@ -149,7 +152,7 @@ Measured via `npm run bench` on **10,000 mixed X posts** (8,000 valid formulas, 
 
 ```bash
 npm run typecheck   # Strict TypeScript type checking (tsc --noEmit)
-npm test            # Run all 98 Vitest unit, DOM & WASM equivalence tests
+npm test            # Run all 105 Vitest unit, DOM & WASM equivalence tests
 npm run test:rust   # Run all 21 native Rust unit tests (cargo test)
 npm run build:wasm  # Recompile crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # Run TypeScript vs. Rust/WASM benchmark over 10,000 posts
@@ -167,6 +170,9 @@ npm run check       # Run typecheck + tests + extension build
 - [x] **v0.3 (Live Composer Preview):** real-time debounced KaTeX preview and validator diagnostics inside the X post composer.
 - [x] **v0.4 (3x HiDPI PNG Export):** one-click copy of crisp formula images for sharing with non-extension users.
 - [x] **v1.0 (Rust/WASM Core):** zero-dependency Rust/WebAssembly parser and validator (`37.5 KB`), differential equivalence tests, and reproducible TypeScript vs. WASM benchmarks.
+- [x] **v1.1 (Smart Composer Autocomplete & Formula Catalog):** accent-insensitive EN/ES/ZH natural-name formula suggestions, `:query` search, and `\command` Tab-completion directly inside X's composer.
+- [ ] **v1.2 (Plain-Math / AsciiMath-lite Compiler):** pure recursive-descent parser (`Lexer -> AST -> LaTeX`) converting everyday expressions like `f(x) = 5x + 2` and `(a+b)/(c+d)` into LaTeX with one click.
+- [ ] **v1.3 (Quick Symbol Bar):** compact clickable symbol palette (`frac`, `√`, `∑`, `∫`, `π`, `∞`, `\ce{}`) inside the composer panel.
 
 ---
 
