@@ -183,6 +183,18 @@ function hasWindowsDrivePath(text: string): boolean {
   return false;
 }
 
+export interface BareLatexOptions {
+  /** Include chemistry commands (`\ce`, `\pu`) in detection/segmentation. Defaults to `true`. */
+  includeChemistry?: boolean;
+}
+
+/**
+ * Returns `true` if `latex` contains any `mhchem` chemistry command (`\ce`, `\pu`).
+ */
+export function usesChemistryCommands(latex: string): boolean {
+  return extractLatexCommands(latex).some((cmd) => CHEMISTRY_COMMANDS.has(cmd));
+}
+
 /**
  * CHALLENGE #3 — Function 3: `hasBareLatex`
  *
@@ -194,10 +206,19 @@ function hasWindowsDrivePath(text: string): boolean {
  *                  2. `text` contains NO Windows drive path prefix (`<ASCII letter>:\`,
  *                     e.g. `C:\Users\...`).
  *                  3. At least one command returned by `extractLatexCommands(text)`
- *                     belongs to `STRONG_LATEX_COMMANDS`.
+ *                     belongs to the active strong command set (`STRONG_LATEX_COMMANDS`
+ *                     when `includeChemistry !== false`, or `MATH_STRONG_COMMANDS` otherwise).
  * - Complexity:    O(n) time.
  */
-export function hasBareLatex(text: string): boolean {
+export function hasBareLatex(
+  text: string,
+  options?: BareLatexOptions
+): boolean {
+  const includeChemistry = options?.includeChemistry ?? true;
+  const activeCommands = includeChemistry
+    ? STRONG_LATEX_COMMANDS
+    : MATH_STRONG_COMMANDS;
+
   const segments = parseMathSegments(text);
   for (const segment of segments) {
     if (segment.type === "math") {
@@ -211,7 +232,7 @@ export function hasBareLatex(text: string): boolean {
 
   const commands = extractLatexCommands(text);
   for (const cmd of commands) {
-    if (STRONG_LATEX_COMMANDS.has(cmd)) {
+    if (activeCommands.has(cmd)) {
       return true;
     }
   }
@@ -303,9 +324,14 @@ function parseChemistryLine(line: string, segments: Segment[]): void {
  *   3. No two consecutive `"text"` segments.
  * - Complexity:    O(n) time.
  */
-export function parseBareLatexSegments(text: string): Segment[] {
+export function parseBareLatexSegments(
+  text: string,
+  options?: BareLatexOptions
+): Segment[] {
+  const includeChemistry = options?.includeChemistry ?? true;
+
   if (text === "") return [];
-  if (!hasBareLatex(text)) {
+  if (!hasBareLatex(text, options)) {
     return [{ type: "text", content: text }];
   }
 
@@ -316,7 +342,8 @@ export function parseBareLatexSegments(text: string): Segment[] {
     const line = lines[lineIdx];
     const lineCmds = extractLatexCommands(line);
     const hasMathCmd = lineCmds.some((cmd) => MATH_STRONG_COMMANDS.has(cmd));
-    const hasChemCmd = lineCmds.some((cmd) => CHEMISTRY_COMMANDS.has(cmd));
+    const hasChemCmd =
+      includeChemistry && lineCmds.some((cmd) => CHEMISTRY_COMMANDS.has(cmd));
 
     if (!hasMathCmd && !hasChemCmd) {
       // Case A: regular text line

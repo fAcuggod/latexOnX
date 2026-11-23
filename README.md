@@ -29,11 +29,13 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 ### Key Features
 
 - **Collision-free delimiters:** supports `\(...\)` inline and `$$...$$` / `\[...\]` display blocks, leaving single-dollar currency notation and cashtags completely untouched.
+- **Chemistry & physical units (`mhchem`):** natively renders chemical formulas, ionic charges, reaction arrows, and physical units (`\ce{...}`, `\pu{...}`), toggleable from the popup.
+- **Opt-in undelimited LaTeX button:** detects posts containing unambiguous raw LaTeX/chemistry commands (ignoring code escapes and Windows paths) and offers a discrete `∑ Render LaTeX` / `↺ Show raw` toggle right below the post.
 - **Built for X's modern frontend:** targets resilient HTML5 semantic landmarks (`<article>` / `[role="article"]`) and builds DOM trees directly via `katex.render()` with **zero `.innerHTML`**, complying with X's strict *Trusted Types* CSP.
 - **60–120 FPS infinite scrolling:** `O(n)` zero-allocation fast-path skips non-math posts immediately, paired with a `requestAnimationFrame`-batched `MutationObserver`.
 - **Defense-in-depth security:** pre-render validator enforces length caps, brace nesting depth, and blocks unsafe macros (`\def`, `\let`, `\newcommand`, `\href`, `\htmlStyle`, etc.) before KaTeX executes; plain text is always inserted as `TextNode` (XSS-safe).
 - **Accessible & theme-native:** outputs HTML + native MathML for screen readers and adapts automatically to X's **Light**, **Dim**, and **Lights Out** themes.
-- **Click-to-copy & instant On/Off:** click (or press Enter/Space on) any rendered formula to copy its LaTeX source; toggle rendering on/off from the popup without reloading tabs.
+- **Click-to-copy & instant On/Off:** click (or press Enter/Space on) any rendered formula to copy its LaTeX source; toggle rendering, chemistry, or the opt-in button live without reloading tabs.
 - **Multilingual UI:** built-in **English**, **Español**, and **简体中文** support (auto-detected with manual switcher in the popup).
 - **Minimal permissions:** requests only `"storage"`, runs with no background service worker, and bundles `.woff2` KaTeX fonts locally (zero external CDNs).
 
@@ -41,11 +43,13 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 
 ## Supported Syntax
 
-| Mode | Delimiters | Example |
+| Mode | Delimiters / Command | Example |
 | :--- | :--- | :--- |
 | **Inline** | `\(...\)` | `Euler's identity \(e^{i\pi} + 1 = 0\)` |
 | **Display block** | `$$...$$` | `$$\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}$$` |
 | **Display block** | `\[...\]` | `\[\int_0^1 x^2\,dx = \frac{1}{3}\]` |
+| **Chemistry (`mhchem`)** | `\ce{...}`, `\pu{...}` | `$$\ce{CO2 + C <=> 2 CO}$$`, `\(\pu{9.8 m/s^2}\)` |
+| **Undelimited (opt-in)** | `∑ Render LaTeX` button | `\zeta(s) = \sum_{n=1}^{\infty} \frac{1}{n^s}` |
 | **Ignored** | Single `$` | Currency notation & cashtags *(never altered)* |
 
 ---
@@ -92,20 +96,21 @@ latexOnX/
 │   ├── core/            # 100% pure logic (zero browser/DOM dependencies)
 │   │   ├── types.ts     # Discriminated union domain types
 │   │   ├── parser.ts    # Lossless linear delimiter scanner
-│   │   └── validator.ts # Anti-DoS validator (length, brace depth, disallowed macros)
+│   │   ├── validator.ts # Anti-DoS validator (length, brace depth, disallowed macros)
+│   │   └── detector.ts  # High-precision bare-LaTeX & chemistry detector/segmenter
 │   ├── renderer/
-│   │   └── katexRenderer.ts # Trusted-Types-safe KaTeX pipeline (HTML + MathML)
+│   │   └── katexRenderer.ts # Trusted-Types-safe KaTeX + mhchem pipeline (HTML + MathML)
 │   ├── content/         # Browser layer (Chrome Manifest V3)
-│   │   ├── domProcessor.ts  # Safe TreeWalker, DocumentFragment, restore & copy
+│   │   ├── domProcessor.ts  # Safe TreeWalker, opt-in button bar, restore & copy
 │   │   ├── observer.ts      # rAF-batched MutationObserver for SPA/infinite scroll
 │   │   ├── index.ts         # Entry point synced with chrome.storage.sync
 │   │   └── styles.css       # Light/Dim/Dark adaptive styles & localized copy toast
 │   ├── i18n/            # English, Spanish & Simplified Chinese UI strings
-│   ├── popup/           # Minimal On/Off & language switcher popup
-│   └── demo/            # Live local KaTeX sandbox
+│   ├── popup/           # Minimal On/Off, feature toggles & language switcher popup
+│   └── demo/            # Live local KaTeX + mhchem sandbox
 ├── public/              # manifest.json (MV3), icons & Chrome _locales
 ├── scripts/build.mjs    # Transparent esbuild bundler + .woff2 font optimizer
-├── tests/               # 44 automated unit & DOM tests (Vitest + happy-dom)
+├── tests/               # 66 automated unit & DOM tests (Vitest + happy-dom)
 └── docs/                # Architecture & TypeScript reference guides
 ```
 
@@ -117,7 +122,7 @@ Read the full technical breakdown in [docs/architecture.md](docs/architecture.md
 
 ```bash
 npm run typecheck   # Strict TypeScript type checking (tsc --noEmit)
-npm test            # Run all 44 unit & DOM tests (Vitest + happy-dom)
+npm test            # Run all 66 unit & DOM tests (Vitest + happy-dom)
 npm run test:watch  # Watch mode for TDD
 npm run build       # Build Chrome MV3 extension into dist/
 npm run build:demo  # Build local KaTeX sandbox into dist-demo/
@@ -128,10 +133,11 @@ npm run check       # Run typecheck + tests + extension build
 
 ## Roadmap
 
-- [x] **Core parser & validator:** lossless delimiter scanner and anti-DoS security checks.
-- [x] **KaTeX DOM renderer:** zero-`innerHTML` rendering compliant with Trusted Types CSP.
-- [x] **Chrome Manifest V3 extension:** resilient `<article>` DOM traversal, `rAF`-batched `MutationObserver`, click-to-copy, instant On/Off toggle, and EN/ES/ZH i18n.
-- [ ] **v0.2 ideas:** live preview panel inside the X post composer and Firefox packaging.
+- [x] **v0.1 — Core & MV3 Extension:** lossless delimiter scanner, anti-DoS validator, Trusted-Types-safe KaTeX renderer, `<article>` DOM observer, click-to-copy, and EN/ES/ZH i18n.
+- [x] **v0.2 — Chemistry & Opt-In Bare LaTeX:** `mhchem` (`\ce`, `\pu`) support and discrete `∑ Render LaTeX` / `↺ Show raw` button for undelimited posts.
+- [ ] **v0.3 — Live Composer Preview:** real-time preview and validator diagnostics inside the X post composer.
+- [ ] **v0.4 — 3× HiDPI PNG Export:** one-click copy of crisp formula images for sharing with non-extension users.
+- [ ] **v1.0 — Rust/WASM Core:** port `src/core/` to Rust → WebAssembly with TypeScript vs. WASM benchmarks.
 
 ---
 

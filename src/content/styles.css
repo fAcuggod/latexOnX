@@ -63,3 +63,47 @@
   z-index: 9999;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
+
+/* Discrete opt-in button bar for undelimited LaTeX / chemistry posts */
+.latex-on-x-bare-bar {
+  display: flex;
+  align-items: center;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+.latex-on-x-bare-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(29, 155, 240, 0.38);
+  background-color: rgba(29, 155, 240, 0.06);
+  color: #1d9bf0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.latex-on-x-bare-btn:hover,
+.latex-on-x-bare-btn:focus-visible {
+  background-color: rgba(29, 155, 240, 0.16);
+  border-color: rgba(29, 155, 240, 0.7);
+  outline: none;
+}
+
+.latex-on-x-bare-btn.is-active {
+  border-color: rgba(113, 118, 123, 0.45);
+  background-color: transparent;
+  color: inherit;
+  opacity: 0.75;
+}
+
+.latex-on-x-bare-btn.is-active:hover {
+  opacity: 1;
+  background-color: rgba(113, 118, 123, 0.14);
+}

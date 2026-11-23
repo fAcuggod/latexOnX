@@ -80,6 +80,15 @@ describe("hasBareLatex (Challenge #3.3)", () => {
       false
     );
   });
+
+  it("ignores chemistry-only posts when includeChemistry is false", () => {
+    expect(hasBareLatex("Water is \\ce{H2O}", { includeChemistry: false })).toBe(
+      false
+    );
+    expect(
+      hasBareLatex("\\frac{1}{2}", { includeChemistry: false })
+    ).toBe(true);
+  });
 });
 
 describe("parseBareLatexSegments (Challenge #3.4)", () => {

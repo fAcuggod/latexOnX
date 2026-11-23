@@ -1,4 +1,4 @@
-import { installCopyHandler } from "../content/domProcessor.js";
+import { installInteractionHandlers } from "../content/domProcessor.js";
 import { createTimelineObserver } from "../content/observer.js";
 
 interface SamplePost {
@@ -17,10 +17,16 @@ const INITIAL_POSTS: SamplePost[] = [
     text: "Euler's identity \\(e^{i\\pi} + 1 = 0\\) and the Basel problem:\n$$\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}$$",
   },
   {
-    author: "Analysis & Finance",
-    handle: "@quant_notes",
-    initials: "AF",
-    text: "Single-dollar currency notation and cashtags stay untouched, while display blocks render cleanly:\n\\[\\int_0^1 x^2\\,dx = \\frac{1}{3}\\]",
+    author: "Chem Lab",
+    handle: "@chem_on_x",
+    initials: "CL",
+    text: "Ionic precipitation with mhchem: \\(\\ce{Fe^{2+} + 2OH- -> Fe(OH)2}\\) and Boudouard equilibrium:\n$$\\ce{CO2 + C <=> 2 CO}$$",
+  },
+  {
+    author: "Undelimited Post",
+    handle: "@opt_in_demo",
+    initials: "UD",
+    text: "Forgot delimiters on this one (try the discrete button below):\n\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}",
     link: "#LaTeXOnX",
   },
   {
@@ -86,8 +92,8 @@ function appendPost(post: SamplePost, prepend = false): void {
   }
 }
 
-// Uses the exact same MutationObserver and delegated copy handler as the real Chrome extension
-installCopyHandler(document);
+// Uses the exact same MutationObserver and delegated interaction handlers as the real extension
+installInteractionHandlers(document);
 const observer = createTimelineObserver();
 observer.start(feedEl ?? document.body);
 

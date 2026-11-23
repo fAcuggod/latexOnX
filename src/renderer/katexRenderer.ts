@@ -1,13 +1,26 @@
 import katex, { type KatexOptions } from "katex";
+import "katex/contrib/mhchem";
+import { usesChemistryCommands } from "../core/detector.js";
 import { parseMathSegments } from "../core/parser.js";
 import type { MathDisplayMode, ValidationReason } from "../core/types.js";
 import { validateLatex, type ValidationLimits } from "../core/validator.js";
+
+export interface RenderOptions extends Partial<ValidationLimits> {
+  /** Allow `mhchem` chemistry commands (`\ce`, `\pu`). Defaults to `true`. */
+  enableChemistry?: boolean;
+}
+
+export type RenderRejectReason =
+  | ValidationReason
+  | "katex_error"
+  | "chemistry_disabled";
 
 /**
  * Output of the full text pipeline (`parseMathSegments -> validateLatex -> KaTeX`):
  * - `"text"`: plain text (inserted as a TextNode, never HTML -> XSS-safe).
  * - `"math"`: validated expression rendered by KaTeX to HTML + accessible MathML.
- * - `"rejected"`: rejected for safety or invalid LaTeX syntax; keeps `raw` for graceful fallback.
+ * - `"rejected"`: rejected for safety, disabled chemistry, or invalid LaTeX syntax;
+ *   keeps `raw` for graceful fallback.
  */
 export type RenderedSegment =
   | {
@@ -25,7 +38,7 @@ export type RenderedSegment =
     }
   | {
       type: "rejected";
-      reason: ValidationReason | "katex_error";
+      reason: RenderRejectReason;
       message: string;
       raw: string;
     };
@@ -46,21 +59,46 @@ const KATEX_SAFE_BASE_OPTIONS: Readonly<KatexOptions> = {
   maxExpand: 100,
 };
 
+function checkBeforeRender(
+  latex: string,
+  options?: RenderOptions
+): { ok: true } | { ok: false; reason: RenderRejectReason; message: string } {
+  const enableChemistry = options?.enableChemistry ?? true;
+  if (!enableChemistry && usesChemistryCommands(latex)) {
+    return {
+      ok: false,
+      reason: "chemistry_disabled",
+      message: "Chemistry commands (\\ce, \\pu) are disabled in settings.",
+    };
+  }
+
+  const validation = validateLatex(latex, options);
+  if (!validation.ok) {
+    return {
+      ok: false,
+      reason: validation.reason,
+      message: validation.message,
+    };
+  }
+
+  return { ok: true };
+}
+
 /**
- * Validates a single expression with `validateLatex` and renders it to HTML + MathML string.
+ * Validates a single expression and renders it to HTML + MathML string (with mhchem support).
  */
 export function renderFormula(
   latex: string,
   mode: MathDisplayMode,
   raw: string,
-  limits?: Partial<ValidationLimits>
+  options?: RenderOptions
 ): RenderedSegment {
-  const validation = validateLatex(latex, limits);
-  if (!validation.ok) {
+  const check = checkBeforeRender(latex, options);
+  if (!check.ok) {
     return {
       type: "rejected",
-      reason: validation.reason,
-      message: validation.message,
+      reason: check.reason,
+      message: check.message,
       raw,
     };
   }
@@ -97,7 +135,7 @@ export type DomRenderResult =
   | { ok: true }
   | {
       ok: false;
-      reason: ValidationReason | "katex_error";
+      reason: RenderRejectReason;
       message: string;
     };
 
@@ -112,15 +150,11 @@ export function renderFormulaToElement(
   latex: string,
   mode: MathDisplayMode,
   target: HTMLElement,
-  limits?: Partial<ValidationLimits>
+  options?: RenderOptions
 ): DomRenderResult {
-  const validation = validateLatex(latex, limits);
-  if (!validation.ok) {
-    return {
-      ok: false,
-      reason: validation.reason,
-      message: validation.message,
-    };
+  const check = checkBeforeRender(latex, options);
+  if (!check.ok) {
+    return check;
   }
 
   try {
@@ -144,11 +178,11 @@ export function renderFormulaToElement(
 }
 
 /**
- * Full pure text pipeline: raw text -> parseMathSegments -> validateLatex -> KaTeX.
+ * Full pure text pipeline: raw text -> parseMathSegments -> validateLatex -> KaTeX (+ mhchem).
  */
 export function renderTweetText(
   text: string,
-  limits?: Partial<ValidationLimits>
+  options?: RenderOptions
 ): RenderedSegment[] {
   const segments = parseMathSegments(text);
 
@@ -157,6 +191,6 @@ export function renderTweetText(
       return segment;
     }
 
-    return renderFormula(segment.content, segment.mode, segment.raw, limits);
+    return renderFormula(segment.content, segment.mode, segment.raw, options);
   });
 }

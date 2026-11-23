@@ -29,11 +29,13 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 ### Características principales
 
 - **Sintaxis sin colisiones:** soporta `\(...\)` en línea y `$$...$$` / `\[...\]` en bloque, dejando completamente intactos precios y *cashtags*.
+- **Química y unidades físicas (`mhchem`):** renderiza fórmulas químicas, cargas iónicas, flechas de reacción y unidades (`\ce{...}`, `\pu{...}`), activable desde el popup.
+- **Botón opt-in para LaTeX sin delimitadores:** detecta publicaciones con comandos LaTeX/químicos inequívocos (ignorando escapes de código y rutas Windows) y muestra un botón discreto `∑ Renderizar LaTeX` / `↺ Ver original`.
 - **Diseñada para el frontend actual de X:** utiliza etiquetas semánticas estándar (`<article>` / `[role="article"]`) y construye nodos DOM directamente con `katex.render()` (**cero `.innerHTML`**), 100% compatible con la política *Trusted Types* de X.
 - **Scroll infinito a 60–120 FPS:** *fast-path* `O(n)` sin asignaciones de memoria que descarta publicaciones sin fórmulas al instante, junto con un `MutationObserver` agrupado en `requestAnimationFrame`.
 - **Seguridad por diseño:** validador previo que impone límites de longitud, profundidad de llaves y bloquea comandos peligrosos (`\def`, `\let`, `\newcommand`, `\href`, `\htmlStyle`, etc.) antes de ejecutar KaTeX; el texto plano siempre se inserta como `TextNode` (anti-XSS).
 - **Accesible y adaptable:** genera HTML + MathML nativo para lectores de pantalla y se integra con los temas **Claro**, **Noche clara (Dim)** y **Oscuro (Lights Out)** de X.
-- **Clic para copiar y On/Off instantáneo:** hacé clic (o presioná Enter/Espacio) en cualquier fórmula para copiar su LaTeX original; activá o pausá el renderizado desde el popup sin recargar la pestaña.
+- **Clic para copiar y On/Off instantáneo:** hacé clic (o presioná Enter/Espacio) en cualquier fórmula para copiar su LaTeX original; activá o pausá funciones desde el popup sin recargar la pestaña.
 - **Interfaz multilingüe:** soporte integrado en **English**, **Español** y **简体中文** (detección automática + selector manual en el popup).
 - **Permisos mínimos:** solicita únicamente `"storage"`, sin *service worker* en segundo plano y con fuentes `.woff2` empaquetadas localmente (cero CDNs externos).
 
@@ -41,11 +43,13 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 
 ## Sintaxis soportada
 
-| Modo | Delimitadores | Ejemplo |
+| Modo | Delimitadores / Comando | Ejemplo |
 | :--- | :--- | :--- |
 | **En línea (`inline`)** | `\(...\)` | `Identidad de Euler \(e^{i\pi} + 1 = 0\)` |
 | **En bloque (`display`)** | `$$...$$` | `$$\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}$$` |
 | **En bloque (`display`)** | `\[...\]` | `\[\int_0^1 x^2\,dx = \frac{1}{3}\]` |
+| **Química (`mhchem`)** | `\ce{...}`, `\pu{...}` | `$$\ce{CO2 + C <=> 2 CO}$$`, `\(\pu{9.8 m/s^2}\)` |
+| **Sin delimitadores (opt-in)** | Botón `∑ Renderizar LaTeX` | `\zeta(s) = \sum_{n=1}^{\infty} \frac{1}{n^s}` |
 | **Ignorado** | `$` simple | Precios y *cashtags* *(nunca se alteran)* |
 
 ---
@@ -86,7 +90,7 @@ Abrí `dist-demo/index.html` en tu navegador para probar fórmulas en los 3 tema
 
 ```bash
 npm run typecheck   # Verifica tipos estrictos con TypeScript (tsc --noEmit)
-npm test            # Ejecuta los 44 tests unitarios y de DOM (Vitest + happy-dom)
+npm test            # Ejecuta los 66 tests unitarios y de DOM (Vitest + happy-dom)
 npm run test:watch  # Modo watch para TDD
 npm run build       # Compila la extensión Chrome MV3 en dist/
 npm run build:demo  # Compila el sandbox local en dist-demo/

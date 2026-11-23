@@ -195,4 +195,80 @@ describe("domProcessor", () => {
       "$$do-not-render-in-button$$"
     );
   });
+
+  it("attaches a discrete opt-in button for undelimited LaTeX, renders on click, and restores on second click", () => {
+    const rawText = "\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}";
+    document.body.innerHTML = `
+      <main>
+        <article>
+          <div><span></span></div>
+        </article>
+      </main>
+    `;
+    const article = document.querySelector("article")!;
+    article.querySelector("span")!.textContent = rawText;
+
+    // Auto-pass does NOT render undelimited LaTeX automatically, but attaches 1 discrete button
+    expect(processAllTweets(document, { locale: "en", enableBareLatexButton: true })).toBe(0);
+    expect(article.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(0);
+
+    const btn = article.querySelector('[data-latex-on-x-bare-toggle]') as HTMLButtonElement;
+    expect(btn).not.toBeNull();
+    expect(btn.textContent).toBe("∑ Render LaTeX");
+
+    // Live i18n update translates the button before clicking
+    updateRenderedLabels("es", document);
+    expect(btn.textContent).toBe("∑ Renderizar LaTeX");
+
+    const uninstall = installCopyHandler(document);
+
+    // Click #1 -> renders undelimited formula and switches button to Show raw
+    btn.click();
+    expect(article.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(1);
+    expect(article.querySelector(".katex")).not.toBeNull();
+    expect(btn.getAttribute("data-latex-on-x-bare-toggle")).toBe("restore");
+
+    // Click #2 -> restores exact original text without leaving artifacts
+    btn.click();
+    expect(article.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(0);
+    expect(article.querySelector("span")!.textContent).toBe(rawText);
+    expect(btn.getAttribute("data-latex-on-x-bare-toggle")).toBe("render");
+
+    uninstall();
+  });
+
+  it("renders undelimited chemistry reactions via opt-in button and respects enableChemistry=false", () => {
+    document.body.innerHTML = `
+      <main>
+        <article id="chem-bare"><div><span>Water: \\ce{2H2 + O2 -> 2H2O}</span></div></article>
+        <article id="chem-delim"><div><span>$$\\ce{H2O}$$</span></div></article>
+      </main>
+    `;
+
+    // When chemistry is disabled, neither delimited nor bare chemistry renders or gets a button
+    expect(
+      processAllTweets(document, { enableChemistry: false, enableBareLatexButton: true })
+    ).toBe(0);
+    expect(document.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(0);
+    expect(document.querySelectorAll('[data-latex-on-x-bar="true"]')).toHaveLength(0);
+
+    // When chemistry is enabled, delimited renders automatically and bare gets the discrete button
+    expect(
+      processAllTweets(document, { enableChemistry: true, enableBareLatexButton: true })
+    ).toBe(1);
+    expect(
+      document.querySelector('#chem-delim [data-latex-on-x="rendered"]')
+    ).not.toBeNull();
+    expect(
+      document.querySelector('#chem-bare [data-latex-on-x-bare-toggle]')
+    ).not.toBeNull();
+  });
+
+  it("does not attach opt-in buttons when enableBareLatexButton is false", () => {
+    document.body.innerHTML = `<article><div><span>\\frac{1}{2}</span></div></article>`;
+    expect(
+      processAllTweets(document, { enableBareLatexButton: false })
+    ).toBe(0);
+    expect(document.querySelectorAll('[data-latex-on-x-bar="true"]')).toHaveLength(0);
+  });
 });

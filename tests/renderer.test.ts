@@ -87,4 +87,32 @@ describe("katexRenderer", () => {
       expect(result[0].raw).toBe("$$x^2 + y^2$$");
     }
   });
+
+  it("renders mhchem chemistry formulas and reactions when enabled", () => {
+    const result = renderTweetText(
+      "Water \\(\\ce{H2O}\\) and reaction $$\\ce{Fe^{2+} + 2OH- -> Fe(OH)2}$$ at \\(\\pu{9.8 m/s^2}\\)"
+    );
+
+    const mathSegments = result.filter((seg) => seg.type === "math");
+    expect(mathSegments).toHaveLength(3);
+    for (const seg of mathSegments) {
+      if (seg.type === "math") {
+        expect(seg.html).toContain("katex-html");
+        expect(seg.html).toContain("<math");
+      }
+    }
+  });
+
+  it("rejects chemistry commands cleanly when enableChemistry is false", () => {
+    const result = renderTweetText("$$\\ce{CO2 + C -> 2 CO}$$", {
+      enableChemistry: false,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe("rejected");
+    if (result[0].type === "rejected") {
+      expect(result[0].reason).toBe("chemistry_disabled");
+      expect(result[0].raw).toBe("$$\\ce{CO2 + C -> 2 CO}$$");
+    }
+  });
 });

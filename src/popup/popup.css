@@ -88,6 +88,7 @@ body {
 }
 
 .toggle-card,
+.options-card,
 .syntax-card,
 .lang-bar {
   background: var(--surface);
@@ -102,6 +103,28 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.options-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.options-card .section-title {
+  margin-bottom: 0;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.option-label {
+  font-size: 12px;
+  color: var(--text);
 }
 
 .toggle-label {
@@ -125,6 +148,11 @@ body {
   width: 40px;
   height: 22px;
   flex-shrink: 0;
+}
+
+.switch-sm {
+  width: 34px;
+  height: 18px;
 }
 
 .switch input {
@@ -154,12 +182,23 @@ body {
   transition: transform 180ms ease;
 }
 
+.switch-sm .slider::before {
+  width: 14px;
+  height: 14px;
+  left: 2px;
+  top: 2px;
+}
+
 .switch input:checked + .slider {
   background: var(--accent);
 }
 
 .switch input:checked + .slider::before {
   transform: translateX(18px);
+}
+
+.switch-sm input:checked + .slider::before {
+  transform: translateX(16px);
 }
 
 .section-title {

@@ -1,4 +1,5 @@
 import {
+  BARE_BAR_ATTR,
   processAllTweets,
   RENDERED_ATTR,
   TWEET_TEXT_SELECTOR,
@@ -55,10 +56,12 @@ export function createTimelineObserver(
 
     if (!el) return false;
 
-    // Ignore mutations originating from our own rendered math nodes
+    // Ignore mutations originating from our own rendered math nodes or opt-in button bars
     if (
       el.getAttribute(RENDERED_ATTR) === "rendered" ||
+      el.getAttribute(BARE_BAR_ATTR) === "true" ||
       el.closest(`[${RENDERED_ATTR}="rendered"]`) !== null ||
+      el.closest(`[${BARE_BAR_ATTR}="true"]`) !== null ||
       el.classList.contains("katex")
     ) {
       return false;
