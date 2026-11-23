@@ -109,7 +109,7 @@ npm run build:demo
 
 ```bash
 npm run typecheck   # 严格 TypeScript 类型检查（tsc --noEmit）
-npm test            # 运行全部 112 个单元测试、DOM 测试与 WASM 等价测试
+npm test            # 运行全部 113 个单元测试、DOM 测试与 WASM 等价测试
 npm run test:rust   # 运行全部 21 个原生 Rust 单元测试（cargo test）
 npm run build:wasm  # 重新编译 crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # 运行 10,000 条帖子的 TypeScript vs. Rust/WASM 基准测试

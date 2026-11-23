@@ -404,9 +404,30 @@ describe("composerOverlay (Milestone B.2)", () => {
     );
     expect(textarea.value).toBe("$$\\frac{a + b}{c - d}$$");
 
+    // 3. Multiple embedded formulas followed by trailing prose all render and convert atomically
+    textarea.value =
+      "definamos f(x) = 4x +d es facil ver que entonces, f'(x) = 4 como queriamos ver.";
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    vi.advanceTimersByTime(60);
+
+    expect(panel.style.display).toBe("block");
+    expect(panel.querySelectorAll(".latex-on-x-preview-body .katex")).toHaveLength(2);
+    const convertAllBtn = panel.querySelector(
+      ".latex-on-x-preview-convert"
+    ) as HTMLButtonElement;
+    expect(convertAllBtn).not.toBeNull();
+    convertAllBtn.click();
+
+    expect(textarea.value).toBe(
+      "definamos \\(f(x) = 4x + d\\) es facil ver que entonces, \\(f'(x) = 4\\) como queriamos ver."
+    );
+    expect(panel.textContent).toContain("2 fórmulas listas");
+
     controller.stop();
   });
 });
+
 
 
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyPlainMathConversions,
   compilePlainMathToLatex,
+  detectPlainMathExpressions,
   detectPlainMathInDraft,
   emitLatexFromAst,
   parsePlainMathToAst,
@@ -116,4 +118,41 @@ describe("plainMathCompiler (v1.2 Lexer -> AST -> LaTeX)", () => {
       expect(detectPlainMathInDraft(sample)).toBeNull();
     }
   });
+
+  it("extracts multiple plain-math formulas anywhere in prose, including with trailing text and Spanish conjunctions", () => {
+    // Exact user screenshot #1
+    const s1 =
+      "Definimos  f'(x) = 5x + 4  se puede ver entonces que luego la derivada segunda es f''(x) = 5";
+    const m1 = detectPlainMathExpressions(s1);
+    expect(m1.map((m) => m.latex)).toEqual(["f'(x) = 5x + 4", "f''(x) = 5"]);
+    expect(applyPlainMathConversions(s1, m1).text).toBe(
+      "Definimos  \\(f'(x) = 5x + 4\\)  se puede ver entonces que luego la derivada segunda es \\(f''(x) = 5\\)"
+    );
+
+    // Exact user screenshot #2 (both formulas followed by trailing prose!)
+    const s2 =
+      "definamos  f(x) = 4x +d es facil ver que entonces, f'(x) = 4 como queriamos ver.";
+    const m2 = detectPlainMathExpressions(s2);
+    expect(m2.map((m) => m.latex)).toEqual(["f(x) = 4x + d", "f'(x) = 4"]);
+    expect(applyPlainMathConversions(s2, m2).text).toBe(
+      "definamos  \\(f(x) = 4x + d\\) es facil ver que entonces, \\(f'(x) = 4\\) como queriamos ver."
+    );
+
+    // Spanish conjunction `y` between two equations stays literal prose
+    const s3 = "Sea a = 3 y b = 4 entonces a^2 + b^2 = 25.";
+    const m3 = detectPlainMathExpressions(s3);
+    expect(m3.map((m) => m.latex)).toEqual(["a = 3", "b = 4", "a^2 + b^2 = 25"]);
+    expect(applyPlainMathConversions(s3, m3).text).toBe(
+      "Sea \\(a = 3\\) y \\(b = 4\\) entonces \\(a^2 + b^2 = 25\\)."
+    );
+
+    // Mixed already-delimited LaTeX + new plain math leaves delimited block untouched
+    const s4 = "Ya tenemos \\(f(x) = 4x + d\\) y luego f'(x) = 4 listo.";
+    const m4 = detectPlainMathExpressions(s4);
+    expect(m4.map((m) => m.latex)).toEqual(["f'(x) = 4"]);
+    expect(applyPlainMathConversions(s4, m4).text).toBe(
+      "Ya tenemos \\(f(x) = 4x + d\\) y luego \\(f'(x) = 4\\) listo."
+    );
+  });
 });
+

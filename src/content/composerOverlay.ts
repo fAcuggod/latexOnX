@@ -11,7 +11,8 @@ import {
   type FormulaMatch,
 } from "../core/formulaCatalog.js";
 import {
-  detectPlainMathInDraft,
+  applyPlainMathConversions,
+  detectPlainMathExpressions,
   type PlainMathSuggestion,
 } from "../core/plainMathCompiler.js";
 import type { ExportTheme } from "../core/pngExporter.js";
@@ -277,13 +278,13 @@ export function createComposerPreviewController(
   let panelEl: HTMLElement | null = null;
   let debouncer: Debouncer | null = null;
   let activeSuggestions: FormulaMatch[] = [];
-  let activePlainMath: PlainMathSuggestion | null = null;
+  let activePlainMaths: PlainMathSuggestion[] = [];
   let selectedSuggestionIdx = 0;
   let lastSuggestionSignature = "";
 
   const clearSuggestions = (): void => {
     activeSuggestions = [];
-    activePlainMath = null;
+    activePlainMaths = [];
     selectedSuggestionIdx = 0;
     lastSuggestionSignature = "";
   };
@@ -428,12 +429,11 @@ export function createComposerPreviewController(
     const acCtx = extractAutocompleteContext(text, cursorPos);
     const suggestions = acCtx ? searchFormulaCatalog(acCtx, locale, 5) : [];
 
-    const plainMath =
-      !analysis.shouldShowPreview && suggestions.length === 0
-        ? detectPlainMathInDraft(text)
-        : null;
+    const plainMaths =
+      suggestions.length === 0 ? detectPlainMathExpressions(text) : [];
+    const hasPlainMaths = plainMaths.length > 0;
 
-    if (!analysis.shouldShowPreview && suggestions.length === 0 && !plainMath) {
+    if (!analysis.shouldShowPreview && suggestions.length === 0 && !hasPlainMaths) {
       clearSuggestions();
       hidePanel();
       return;
@@ -449,7 +449,7 @@ export function createComposerPreviewController(
       selectedSuggestionIdx = 0;
     }
     activeSuggestions = suggestions;
-    activePlainMath = plainMath;
+    activePlainMaths = plainMaths;
 
     const panel = ensurePanel(activeComposer);
     const currentTheme = detectPageTheme(doc);
@@ -468,7 +468,51 @@ export function createComposerPreviewController(
     let renderedFormulaCount = 0;
     let hasPreviewBody = false;
 
-    if (analysis.shouldShowPreview) {
+    const appendTextChunkWithPlainMath = (
+      chunk: string,
+      chunkStartOffset: number
+    ): void => {
+      const chunkEndOffset = chunkStartOffset + chunk.length;
+      let cursor = chunkStartOffset;
+
+      for (const pm of plainMaths) {
+        if (pm.replaceEnd <= chunkStartOffset) continue;
+        if (pm.replaceStart >= chunkEndOffset) break;
+
+        if (pm.replaceStart > cursor) {
+          bodyEl.appendChild(
+            doc.createTextNode(
+              chunk.slice(cursor - chunkStartOffset, pm.replaceStart - chunkStartOffset)
+            )
+          );
+        }
+
+        const wrapper = doc.createElement("span");
+        const res = renderFormulaToElement(pm.latex, pm.mode, wrapper, {
+          enableChemistry,
+        });
+        if (res.ok) {
+          renderedFormulaCount += 1;
+          wrapper.className =
+            pm.mode === "display"
+              ? "latex-on-x-formula latex-on-x-display"
+              : "latex-on-x-formula latex-on-x-inline";
+          bodyEl.appendChild(wrapper);
+        } else {
+          bodyEl.appendChild(doc.createTextNode(pm.raw));
+        }
+
+        cursor = pm.replaceEnd;
+      }
+
+      if (cursor < chunkEndOffset) {
+        bodyEl.appendChild(
+          doc.createTextNode(chunk.slice(cursor - chunkStartOffset))
+        );
+      }
+    };
+
+    if (analysis.shouldShowPreview || hasPlainMaths) {
       hasPreviewBody = true;
       const erroredFormulaIndices = new Set<number>();
       for (const diag of analysis.diagnostics) {
@@ -481,12 +525,19 @@ export function createComposerPreviewController(
       }
 
       let formulaIdx = 0;
+      let textOffset = 0;
       for (const seg of analysis.segments) {
         if (seg.type === "text") {
-          bodyEl.appendChild(doc.createTextNode(seg.content));
+          if (hasPlainMaths) {
+            appendTextChunkWithPlainMath(seg.content, textOffset);
+          } else {
+            bodyEl.appendChild(doc.createTextNode(seg.content));
+          }
+          textOffset += seg.content.length;
         } else {
           const currentIdx = formulaIdx;
           formulaIdx += 1;
+          textOffset += seg.raw.length;
 
           if (erroredFormulaIndices.has(currentIdx)) {
             const badSpan = doc.createElement("span");
@@ -521,32 +572,8 @@ export function createComposerPreviewController(
           }
         }
       }
-    } else if (plainMath) {
-      const wrapper = doc.createElement("span");
-      const result = renderFormulaToElement(
-        plainMath.latex,
-        plainMath.mode,
-        wrapper,
-        { enableChemistry }
-      );
-      if (result.ok) {
-        hasPreviewBody = true;
-        renderedFormulaCount = 1;
-        wrapper.className =
-          plainMath.mode === "display"
-            ? "latex-on-x-formula latex-on-x-display"
-            : "latex-on-x-formula latex-on-x-inline";
 
-        const beforeText = text.slice(0, plainMath.replaceStart);
-        const afterText = text.slice(plainMath.replaceEnd);
-        if (beforeText.length > 0) {
-          bodyEl.appendChild(doc.createTextNode(beforeText));
-        }
-        bodyEl.appendChild(wrapper);
-        if (afterText.length > 0) {
-          bodyEl.appendChild(doc.createTextNode(afterText));
-        }
-      } else {
+      if (!analysis.shouldShowPreview && renderedFormulaCount === 0) {
         clearSuggestions();
         hidePanel();
         return;
@@ -565,7 +592,7 @@ export function createComposerPreviewController(
     const titleEl = doc.createElement("span");
     titleEl.className = "latex-on-x-preview-title";
     titleEl.textContent =
-      analysis.shouldShowPreview || plainMath
+      analysis.shouldShowPreview || hasPlainMaths
         ? `∑ ${msg.previewTitle}`
         : `∑ ${msg.suggestionsTitle}`;
     titleGroup.appendChild(titleEl);
@@ -586,7 +613,7 @@ export function createComposerPreviewController(
             : `✓ ${msg.previewReadyPlural.replace("{n}", String(analysis.formulaCount))}`;
       }
       titleGroup.appendChild(badgeEl);
-    } else if (plainMath) {
+    } else if (hasPlainMaths) {
       const badgeEl = doc.createElement("span");
       badgeEl.className = "latex-on-x-preview-badge is-plain";
       badgeEl.textContent = msg.plainMathBadge;
@@ -601,7 +628,7 @@ export function createComposerPreviewController(
     const actionsGroup = doc.createElement("div");
     actionsGroup.className = "latex-on-x-preview-actions";
 
-    if (plainMath) {
+    if (hasPlainMaths) {
       const convertBtn = doc.createElement("button");
       convertBtn.type = "button";
       convertBtn.className = "latex-on-x-preview-convert";
@@ -794,21 +821,25 @@ export function createComposerPreviewController(
   };
 
   const acceptPlainMathConversion = (): void => {
-    if (!activeComposer || !activeComposer.isConnected || !activePlainMath) {
+    if (
+      !activeComposer ||
+      !activeComposer.isConnected ||
+      activePlainMaths.length === 0
+    ) {
       return;
     }
 
     const currentText = readComposerText(activeComposer);
-    const { replaceStart, replaceEnd, wrappedLatex } = activePlainMath;
-    const nextText =
-      currentText.slice(0, replaceStart) +
-      wrappedLatex +
-      currentText.slice(replaceEnd);
-    const nextCursor = replaceStart + wrappedLatex.length;
+    const { text: nextText, cursorPos } = applyPlainMathConversions(
+      currentText,
+      activePlainMaths
+    );
+    const lastWrapped =
+      activePlainMaths[activePlainMaths.length - 1].wrappedLatex;
 
     clearSuggestions();
     debouncer?.cancel();
-    writeComposerValue(activeComposer, nextText, nextCursor, wrappedLatex);
+    writeComposerValue(activeComposer, nextText, cursorPos, lastWrapped);
     renderPreviewNow();
   };
 
@@ -857,7 +888,7 @@ export function createComposerPreviewController(
     }
 
     const hasSuggestions = activeSuggestions.length > 0;
-    const hasPlainMath = activePlainMath !== null;
+    const hasPlainMath = activePlainMaths.length > 0;
     if (!hasSuggestions && !hasPlainMath) return;
 
     const composer = findComposerElement(event.target);

@@ -956,93 +956,363 @@ function buildSuggestion(
   };
 }
 
+interface PositionedToken {
+  token: MathToken;
+  start: number;
+  end: number;
+  hadLeadingSpace: boolean;
+}
+
+const SKIP_PATTERN = /https?:\/\/\S+|@[a-zA-Z0-9_]+|#[a-zA-Z0-9_]+/g;
+
+function endsAtom(tok: MathToken): boolean {
+  return (
+    tok.kind === "number" ||
+    tok.kind === "ident" ||
+    tok.kind === "rparen" ||
+    tok.kind === "rbracket" ||
+    tok.kind === "prime" ||
+    (tok.kind === "op" && tok.value === "!")
+  );
+}
+
+function startsAtom(tok: MathToken): boolean {
+  return (
+    tok.kind === "number" ||
+    tok.kind === "ident" ||
+    tok.kind === "lparen" ||
+    tok.kind === "lbracket" ||
+    tok.kind === "pipe"
+  );
+}
+
+function canJoinAcrossWhitespace(prev: MathToken, next: MathToken): boolean {
+  // Allow space-separated implicit multiplication with Greek symbols or math functions
+  // (e.g., `lambda v`, `pi r`, `2 pi`, `sin x`), while splitting prose conjunctions (`2 y g(x)`)
+  if (prev.kind === "ident") {
+    if (Object.prototype.hasOwnProperty.call(KNOWN_SYMBOLS, prev.value)) {
+      return next.kind === "ident" || next.kind === "number";
+    }
+    if (Object.prototype.hasOwnProperty.call(KNOWN_FUNCTIONS, prev.value)) {
+      return next.kind === "lparen" || next.kind === "ident" || next.kind === "number";
+    }
+  }
+  if (
+    prev.kind === "number" &&
+    next.kind === "ident" &&
+    Object.prototype.hasOwnProperty.call(KNOWN_SYMBOLS, next.value)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function scanChunkForPlainMath(
+  chunk: string,
+  baseOffset: number,
+  results: PlainMathSuggestion[]
+): void {
+  // Mask URLs, @mentions, and #hashtags so they act as hard prose boundaries
+  const skipRanges: Array<[number, number]> = [];
+  SKIP_PATTERN.lastIndex = 0;
+  let skipMatch: RegExpExecArray | null;
+  while ((skipMatch = SKIP_PATTERN.exec(chunk)) !== null) {
+    skipRanges.push([skipMatch.index, skipMatch.index + skipMatch[0].length]);
+  }
+  let skipIdx = 0;
+
+  let i = 0;
+  let parenDepth = 0;
+  let run: PositionedToken[] = [];
+
+  const flushRun = (): void => {
+    if (run.length < 2) {
+      run = [];
+      parenDepth = 0;
+      return;
+    }
+
+    // Trim trailing stray openers/binary operators that may precede a prose break
+    let endIdx = run.length;
+    while (endIdx > 0) {
+      const last = run[endIdx - 1].token;
+      if (
+        last.kind === "lparen" ||
+        last.kind === "lbracket" ||
+        last.kind === "comma" ||
+        (last.kind === "op" && last.value !== "!")
+      ) {
+        endIdx -= 1;
+      } else {
+        break;
+      }
+    }
+
+    let startIdx = 0;
+    while (startIdx < endIdx) {
+      const first = run[startIdx].token;
+      if (
+        first.kind === "rparen" ||
+        first.kind === "rbracket" ||
+        first.kind === "comma" ||
+        (first.kind === "op" &&
+          first.value !== "-" &&
+          first.value !== "+" &&
+          first.value !== "+-")
+      ) {
+        startIdx += 1;
+      } else {
+        break;
+      }
+    }
+
+    if (endIdx - startIdx >= 2) {
+      const spanStart = run[startIdx].start;
+      const spanEnd = run[endIdx - 1].end;
+      const raw = chunk.slice(spanStart, spanEnd);
+      const compiled = compilePlainMathToLatex(raw);
+      if (compiled) {
+        const lineStart = chunk.lastIndexOf("\n", spanStart - 1) + 1;
+        const nextNl = chunk.indexOf("\n", spanEnd);
+        const lineEnd = nextNl === -1 ? chunk.length : nextNl;
+        const isStandaloneLine =
+          chunk.slice(lineStart, spanStart).trim().length === 0 &&
+          chunk.slice(spanEnd, lineEnd).trim().length === 0;
+
+        results.push(
+          buildSuggestion(
+            raw,
+            baseOffset + spanStart,
+            baseOffset + spanEnd,
+            isStandaloneLine,
+            compiled
+          )
+        );
+      }
+    }
+
+    run = [];
+    parenDepth = 0;
+  };
+
+  let hadLeadingSpace = false;
+
+  while (i < chunk.length) {
+    while (skipIdx < skipRanges.length && skipRanges[skipIdx][1] <= i) {
+      skipIdx += 1;
+    }
+    if (skipIdx < skipRanges.length && i >= skipRanges[skipIdx][0]) {
+      flushRun();
+      i = skipRanges[skipIdx][1];
+      hadLeadingSpace = true;
+      continue;
+    }
+
+    const ch = chunk[i];
+
+    if (ch === "\n" || ch === "\r") {
+      flushRun();
+      i += 1;
+      hadLeadingSpace = true;
+      continue;
+    }
+
+    if (ch === " " || ch === "\t") {
+      hadLeadingSpace = true;
+      i += 1;
+      continue;
+    }
+
+    // Read one positioned token
+    let tok: MathToken | null = null;
+    let tokEnd = i + 1;
+
+    if (isAsciiDigit(ch)) {
+      let j = i + 1;
+      let sawDot = false;
+      while (j < chunk.length) {
+        if (isAsciiDigit(chunk[j])) {
+          j += 1;
+        } else if (
+          chunk[j] === "." &&
+          !sawDot &&
+          j + 1 < chunk.length &&
+          isAsciiDigit(chunk[j + 1])
+        ) {
+          sawDot = true;
+          j += 1;
+        } else {
+          break;
+        }
+      }
+      tok = { kind: "number", value: chunk.slice(i, j) };
+      tokEnd = j;
+    } else if (isAsciiLetter(ch)) {
+      let j = i + 1;
+      while (j < chunk.length && isAsciiLetter(chunk[j])) {
+        j += 1;
+      }
+      const word = chunk.slice(i, j);
+      if (!isValidMathIdentifier(word)) {
+        flushRun();
+        i = j;
+        hadLeadingSpace = false;
+        continue;
+      }
+      tok = { kind: "ident", value: word };
+      tokEnd = j;
+    } else {
+      let matchedMulti: string | null = null;
+      for (const op of MULTI_CHAR_OPS) {
+        if (chunk.startsWith(op, i)) {
+          matchedMulti = op;
+          break;
+        }
+      }
+      if (matchedMulti !== null) {
+        tok = { kind: "op", value: matchedMulti };
+        tokEnd = i + matchedMulti.length;
+      } else {
+        switch (ch) {
+          case "(":
+            tok = { kind: "lparen" };
+            break;
+          case ")":
+            tok = { kind: "rparen" };
+            break;
+          case "[":
+            tok = { kind: "lbracket" };
+            break;
+          case "]":
+            tok = { kind: "rbracket" };
+            break;
+          case ",":
+            if (parenDepth === 0) {
+              flushRun();
+              i += 1;
+              hadLeadingSpace = false;
+              continue;
+            }
+            tok = { kind: "comma" };
+            break;
+          case "|":
+            tok = { kind: "pipe" };
+            break;
+          case "'":
+            tok = { kind: "prime" };
+            break;
+          case "+":
+          case "-":
+          case "*":
+          case "/":
+          case "^":
+          case "_":
+          case "=":
+          case "<":
+          case ">":
+          case "!":
+            tok = { kind: "op", value: ch };
+            break;
+          default:
+            flushRun();
+            i += 1;
+            hadLeadingSpace = false;
+            continue;
+        }
+      }
+    }
+
+    // Split between two whitespace-separated atoms at top level (e.g. `f(x) = 5x + 2 y g(x) = 3`)
+    if (
+      run.length > 0 &&
+      parenDepth === 0 &&
+      hadLeadingSpace &&
+      endsAtom(run[run.length - 1].token) &&
+      startsAtom(tok) &&
+      !canJoinAcrossWhitespace(run[run.length - 1].token, tok)
+    ) {
+      flushRun();
+    }
+
+    if (tok.kind === "lparen" || tok.kind === "lbracket") {
+      parenDepth += 1;
+    } else if (tok.kind === "rparen" || tok.kind === "rbracket") {
+      parenDepth = Math.max(0, parenDepth - 1);
+    }
+
+    run.push({ token: tok, start: i, end: tokEnd, hadLeadingSpace });
+    hadLeadingSpace = false;
+    i = tokEnd;
+  }
+
+  flushRun();
+}
+
 /**
- * Scans a composer draft for a high-confidence plain-math expression (such as
- * `f(x) = 5x + 2` or `(a + b)/(c + d)`) when the draft does not already contain
- * delimited LaTeX. Supports both standalone expressions and trailing equations
- * inside prose (e.g., `"Definimos la función: f(x) = 5x + 2"`).
+ * Scans an entire composer draft and extracts ALL high-confidence plain-math
+ * expressions in left-to-right order (including multiple expressions inside prose
+ * and expressions followed by trailing text), while leaving already-delimited
+ * LaTeX blocks untouched.
+ */
+export function detectPlainMathExpressions(
+  text: string
+): PlainMathSuggestion[] {
+  if (text.trim().length < 3) return [];
+
+  const segments = parseMathSegments(text);
+  const results: PlainMathSuggestion[] = [];
+  let offset = 0;
+
+  for (const seg of segments) {
+    if (seg.type === "math") {
+      offset += seg.raw.length;
+      continue;
+    }
+
+    // Skip text chunks that contain raw LaTeX backslashes or unclosed `$$` delimiters
+    if (!seg.content.includes("\\") && !seg.content.includes("$$")) {
+      scanChunkForPlainMath(seg.content, offset, results);
+    }
+    offset += seg.content.length;
+  }
+
+  return results;
+}
+
+/**
+ * Convenience wrapper returning the first detected plain-math expression in `text`,
+ * or `null` if none is found.
  */
 export function detectPlainMathInDraft(
   text: string
 ): PlainMathSuggestion | null {
-  const trimmedFull = text.trim();
-  if (trimmedFull.length < 3) return null;
+  const all = detectPlainMathExpressions(text);
+  return all.length > 0 ? all[0] : null;
+}
 
-  // Yield completely if the draft already uses explicit LaTeX delimiters or backslashes
-  if (text.includes("\\") || text.includes("$$")) return null;
-  if (parseMathSegments(text).some((s) => s.type === "math")) return null;
-
-  // 1. Try the whole draft directly (fast path for pure math drafts like `f(x) = 5x + 2`)
-  const fullCompiled = compilePlainMathToLatex(trimmedFull);
-  if (fullCompiled) {
-    const start = text.indexOf(trimmedFull);
-    return buildSuggestion(
-      trimmedFull,
-      start,
-      start + trimmedFull.length,
-      true,
-      fullCompiled
-    );
+/**
+ * Atomically replaces every detected plain-math span in `text` with its compiled
+ * delimited LaTeX (`\(...\)` or `$$...$$`), preserving all surrounding prose verbatim.
+ */
+export function applyPlainMathConversions(
+  text: string,
+  matches: readonly PlainMathSuggestion[]
+): { text: string; cursorPos: number } {
+  if (matches.length === 0) {
+    return { text, cursorPos: text.length };
   }
 
-  // 2. Scan individual lines from bottom to top, checking full line or trailing clause
-  let offset = 0;
-  const lines = text.split("\n");
-  const lineSpans: Array<{ line: string; start: number }> = [];
-  for (const line of lines) {
-    lineSpans.push({ line, start: offset });
-    offset += line.length + 1;
+  let out = "";
+  let cursor = 0;
+  let lastInsertedEnd = text.length;
+
+  for (const m of matches) {
+    out += text.slice(cursor, m.replaceStart);
+    out += m.wrappedLatex;
+    lastInsertedEnd = out.length;
+    cursor = m.replaceEnd;
   }
 
-  for (let idx = lineSpans.length - 1; idx >= 0; idx -= 1) {
-    const { line, start: lineStart } = lineSpans[idx];
-    const trimmedLine = line.trim();
-    if (trimmedLine.length < 3) continue;
-
-    // 2a. Entire line is a valid plain-math expression
-    const lineCompiled = compilePlainMathToLatex(trimmedLine);
-    if (lineCompiled) {
-      const relStart = line.indexOf(trimmedLine);
-      return buildSuggestion(
-        trimmedLine,
-        lineStart + relStart,
-        lineStart + relStart + trimmedLine.length,
-        true,
-        lineCompiled
-      );
-    }
-
-    // 2b. Trailing equation after `:` or prose words (try longest valid token-boundary suffix)
-    const tokenStarts: number[] = [];
-    for (let k = 0; k < line.length; k += 1) {
-      if (
-        (k === 0 || /[\s:;,]/.test(line[k - 1])) &&
-        !/[\s:;,]/.test(line[k])
-      ) {
-        tokenStarts.push(k);
-      }
-    }
-
-    for (const relStart of tokenStarts) {
-      if (relStart === 0) continue;
-      // Strip optional trailing sentence period/punctuation
-      let relEnd = line.length;
-      while (relEnd > relStart && /[\s.?!;,]/.test(line[relEnd - 1])) {
-        relEnd -= 1;
-      }
-      const candidate = line.slice(relStart, relEnd);
-      const compiled = compilePlainMathToLatex(candidate);
-      if (compiled) {
-        return buildSuggestion(
-          candidate,
-          lineStart + relStart,
-          lineStart + relEnd,
-          false,
-          compiled
-        );
-      }
-    }
-  }
-
-  return null;
+  out += text.slice(cursor);
+  return { text: out, cursorPos: lastInsertedEnd };
 }
