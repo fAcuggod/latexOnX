@@ -135,8 +135,50 @@ describe("formulaCatalog (v1.1 Smart Autocomplete Core)", () => {
       expect(entry.labels.es.trim().length).toBeGreaterThan(0);
       expect(entry.labels.zh.trim().length).toBeGreaterThan(0);
       expect(entry.previewLatex.trim().length).toBeGreaterThan(0);
-      expect(entry.keywords.length).toBeGreaterThan(0);
+      expect(entry.keywords.en.length).toBeGreaterThan(0);
+      expect(entry.keywords.es.length).toBeGreaterThan(0);
+      expect(entry.keywords.zh.length).toBeGreaterThan(0);
     }
+  });
+
+  it("scopes ambient autocomplete strictly to the active UI locale (en, es, zh) including function / funcion / 函数", () => {
+    const queryAmbient = (text: string, locale: "en" | "es" | "zh") => {
+      const ctx = extractAutocompleteContext(text, text.length);
+      return ctx ? searchFormulaCatalog(ctx, locale, 5) : [];
+    };
+
+    // English UI: "function" suggests functions, Spanish "funcion" does NOT trigger
+    const enFunc = queryAmbient("function", "en");
+    expect(enFunc.map((m) => m.entry.id)).toEqual(
+      expect.arrayContaining(["piecewise-function", "riemann-zeta", "softmax-function"])
+    );
+    expect(queryAmbient("funcion", "en")).toEqual([]);
+
+    // Spanish UI: "funcion" suggests functions, English "function" does NOT trigger
+    const esFunc = queryAmbient("funcion", "es");
+    expect(esFunc.map((m) => m.entry.id)).toEqual(
+      expect.arrayContaining(["piecewise-function", "riemann-zeta", "softmax-function"])
+    );
+    expect(queryAmbient("function", "es")).toEqual([]);
+
+    // Chinese UI: "函数" and unspaced "看看函数" suggest functions; "funcion" / "function" do NOT trigger
+    const zhFunc = queryAmbient("函数", "zh");
+    expect(zhFunc.map((m) => m.entry.id)).toEqual(
+      expect.arrayContaining(["piecewise-function", "riemann-zeta", "softmax-function"])
+    );
+    const zhInline = queryAmbient("看看函数", "zh");
+    expect(zhInline.length).toBeGreaterThanOrEqual(3);
+    const appliedZh = applyFormulaInsertion("看看函数", zhInline[0]);
+    expect(appliedZh.text.startsWith("看看")).toBe(true);
+    expect(appliedZh.text).not.toContain("函数");
+
+    expect(queryAmbient("funcion", "zh")).toEqual([]);
+    expect(queryAmbient("function", "zh")).toEqual([]);
+
+    // Generic everyday words in each language must NOT spam ambient suggestions
+    expect(queryAmbient("I have a normal problem", "en")).toEqual([]);
+    expect(queryAmbient("no hay problema normal", "es")).toEqual([]);
+    expect(queryAmbient("这个状态很好", "zh")).toEqual([]);
   });
 });
 

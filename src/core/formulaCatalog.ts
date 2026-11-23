@@ -1,4 +1,4 @@
-import type { Locale } from "../i18n/messages.js";
+import { SUPPORTED_LOCALES, type Locale } from "../i18n/messages.js";
 import type { MathDisplayMode } from "./types.js";
 
 export type FormulaCategory =
@@ -12,8 +12,8 @@ export type FormulaCategory =
 export interface FormulaEntry {
   id: string;
   labels: Readonly<Record<Locale, string>>;
-  /** Accent-free lowercase keywords/aliases across EN, ES, ZH, and LaTeX triggers. */
-  keywords: readonly string[];
+  /** Accent-free lowercase keywords/aliases scoped by locale (EN / ES / ZH). */
+  keywords: Readonly<Record<Locale, readonly string[]>>;
   /** Snippet inserted into the composer. */
   snippet: string;
   /** Clean KaTeX source rendered as a live miniature preview inside the suggestion row. */
@@ -48,7 +48,7 @@ export interface FormulaMatch {
 }
 
 export const FORMULA_CATALOG: readonly FormulaEntry[] = [
-  // --- Famous Named Formulas & Templates (EN / ES / ZH searchable) ---
+  // --- Named Formulas & Templates (locale-scoped EN / ES / ZH) ---
   {
     id: "riemann-zeta",
     labels: {
@@ -56,16 +56,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Función zeta de Riemann",
       zh: "黎曼 Zeta 函数",
     },
-    keywords: [
-      "riemann zeta function",
-      "riemann zeta",
-      "funcion zeta de riemann",
-      "funcion zeta",
-      "zeta de riemann",
-      "riemann",
-      "黎曼zeta",
-      "黎曼函数",
-    ],
+    keywords: {
+      en: ["riemann zeta function", "riemann zeta", "zeta function", "riemann"],
+      es: ["funcion zeta de riemann", "funcion zeta", "zeta de riemann", "riemann"],
+      zh: ["黎曼zeta函数", "黎曼zeta", "黎曼函数", "zeta函数"],
+    },
     snippet: "$$\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}$$",
     previewLatex: "\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}",
     previewMode: "inline",
@@ -79,13 +74,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Identidad de Euler",
       zh: "欧拉恒等式",
     },
-    keywords: [
-      "euler identity",
-      "eulers identity",
-      "identidad de euler",
-      "euler",
-      "欧拉恒等式",
-    ],
+    keywords: {
+      en: ["euler identity", "eulers identity", "euler"],
+      es: ["identidad de euler", "euler"],
+      zh: ["欧拉恒等式", "欧拉"],
+    },
     snippet: "\\(e^{i\\pi} + 1 = 0\\)",
     previewLatex: "e^{i\\pi} + 1 = 0",
     previewMode: "inline",
@@ -99,12 +92,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Fórmula de Euler",
       zh: "欧拉公式",
     },
-    keywords: [
-      "euler formula",
-      "eulers formula",
-      "formula de euler",
-      "欧拉公式",
-    ],
+    keywords: {
+      en: ["euler formula", "eulers formula"],
+      es: ["formula de euler"],
+      zh: ["欧拉公式"],
+    },
     snippet: "\\(e^{ix} = \\cos x + i\\sin x\\)",
     previewLatex: "e^{ix} = \\cos x + i\\sin x",
     previewMode: "inline",
@@ -118,14 +110,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Fórmula cuadrática (resolvente)",
       zh: "一元二次求根公式",
     },
-    keywords: [
-      "quadratic formula",
-      "formula cuadratica",
-      "ecuacion cuadratica",
-      "resolvente",
-      "bhaskara",
-      "求根公式",
-    ],
+    keywords: {
+      en: ["quadratic formula", "quadratic equation"],
+      es: ["formula cuadratica", "ecuacion cuadratica", "resolvente", "bhaskara"],
+      zh: ["一元二次求根公式", "求根公式", "二次方程"],
+    },
     snippet: "$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$",
     previewLatex: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
     previewMode: "inline",
@@ -139,13 +128,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Teorema de Pitágoras",
       zh: "勾股定理",
     },
-    keywords: [
-      "pythagorean theorem",
-      "pythagoras",
-      "teorema de pitagoras",
-      "pitagoras",
-      "勾股定理",
-    ],
+    keywords: {
+      en: ["pythagorean theorem", "pythagoras"],
+      es: ["teorema de pitagoras", "pitagoras"],
+      zh: ["勾股定理", "毕达哥拉斯定理"],
+    },
     snippet: "\\(a^2 + b^2 = c^2\\)",
     previewLatex: "a^2 + b^2 = c^2",
     previewMode: "inline",
@@ -159,12 +146,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Problema de Basilea",
       zh: "巴塞尔问题",
     },
-    keywords: [
-      "basel problem",
-      "problema de basilea",
-      "basilea",
-      "巴塞尔问题",
-    ],
+    keywords: {
+      en: ["basel problem", "basel"],
+      es: ["problema de basilea", "basilea"],
+      zh: ["巴塞尔问题"],
+    },
     snippet: "$$\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}$$",
     previewLatex: "\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}",
     previewMode: "inline",
@@ -178,12 +164,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Integral gaussiana",
       zh: "高斯积分",
     },
-    keywords: [
-      "gaussian integral",
-      "integral gaussiana",
-      "integral de gauss",
-      "高斯积分",
-    ],
+    keywords: {
+      en: ["gaussian integral", "gauss integral"],
+      es: ["integral gaussiana", "integral de gauss"],
+      zh: ["高斯积分"],
+    },
     snippet: "$$\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}$$",
     previewLatex: "\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}",
     previewMode: "inline",
@@ -197,12 +182,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Definición de derivada",
       zh: "导数定义",
     },
-    keywords: [
-      "derivative definition",
-      "definicion de derivada",
-      "derivada por definicion",
-      "导数定义",
-    ],
+    keywords: {
+      en: ["derivative definition", "definition of derivative"],
+      es: ["definicion de derivada", "derivada por definicion"],
+      zh: ["导数定义"],
+    },
     snippet: "$$f'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}$$",
     previewLatex: "f'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}",
     previewMode: "inline",
@@ -216,11 +200,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Teorema fundamental del cálculo",
       zh: "微积分基本定理",
     },
-    keywords: [
-      "fundamental theorem of calculus",
-      "teorema fundamental del calculo",
-      "微积分基本定理",
-    ],
+    keywords: {
+      en: ["fundamental theorem of calculus", "fundamental theorem"],
+      es: ["teorema fundamental del calculo", "teorema fundamental"],
+      zh: ["微积分基本定理"],
+    },
     snippet: "$$\\int_a^b f(x)\\,dx = F(b) - F(a)$$",
     previewLatex: "\\int_a^b f(x)\\,dx = F(b) - F(a)",
     previewMode: "inline",
@@ -234,7 +218,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Serie de Taylor",
       zh: "泰勒级数",
     },
-    keywords: ["taylor series", "serie de taylor", "polinomio de taylor", "泰勒级数"],
+    keywords: {
+      en: ["taylor series", "taylor polynomial", "taylor"],
+      es: ["serie de taylor", "polinomio de taylor", "taylor"],
+      zh: ["泰勒级数", "泰勒展开"],
+    },
     snippet: "$$f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!}(x - a)^n$$",
     previewLatex: "f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!}(x-a)^n",
     previewMode: "inline",
@@ -248,12 +236,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Transformada de Fourier",
       zh: "傅里叶变换",
     },
-    keywords: [
-      "fourier transform",
-      "transformada de fourier",
-      "fourier",
-      "傅里叶变换",
-    ],
+    keywords: {
+      en: ["fourier transform", "fourier"],
+      es: ["transformada de fourier", "fourier"],
+      zh: ["傅里叶变换"],
+    },
     snippet: "$$\\hat{f}(\\xi) = \\int_{-\\infty}^{\\infty} f(x)\\,e^{-2\\pi i x \\xi}\\,dx$$",
     previewLatex: "\\hat{f}(\\xi) = \\int_{-\\infty}^{\\infty} f(x)e^{-2\\pi i x \\xi}dx",
     previewMode: "inline",
@@ -267,13 +254,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Distribución normal",
       zh: "正态分布",
     },
-    keywords: [
-      "normal distribution",
-      "gaussian distribution",
-      "distribucion normal",
-      "campana de gauss",
-      "正态分布",
-    ],
+    keywords: {
+      en: ["normal distribution", "gaussian distribution"],
+      es: ["distribucion normal", "campana de gauss"],
+      zh: ["正态分布", "高斯分布"],
+    },
     snippet:
       "$$f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}} e^{-\\frac{1}{2}\\left(\\frac{x-\\mu}{\\sigma}\\right)^2}$$",
     previewLatex:
@@ -289,12 +274,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Teorema de Bayes",
       zh: "贝叶斯定理",
     },
-    keywords: [
-      "bayes theorem",
-      "teorema de bayes",
-      "regla de bayes",
-      "贝叶斯定理",
-    ],
+    keywords: {
+      en: ["bayes theorem", "bayes rule"],
+      es: ["teorema de bayes", "regla de bayes"],
+      zh: ["贝叶斯定理", "贝叶斯公式"],
+    },
     snippet: "$$P(A \\mid B) = \\frac{P(B \\mid A)\\,P(A)}{P(B)}$$",
     previewLatex: "P(A \\mid B) = \\frac{P(B \\mid A)P(A)}{P(B)}",
     previewMode: "inline",
@@ -308,12 +292,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Binomio de Newton",
       zh: "二项式定理",
     },
-    keywords: [
-      "binomial theorem",
-      "binomio de newton",
-      "teorema del binomio",
-      "二项式定理",
-    ],
+    keywords: {
+      en: ["binomial theorem", "binomial expansion"],
+      es: ["binomio de newton", "teorema del binomio"],
+      zh: ["二项式定理"],
+    },
     snippet: "$$(a + b)^n = \\sum_{k=0}^{n} \\binom{n}{k} a^{n-k} b^k$$",
     previewLatex: "(a+b)^n = \\sum_{k=0}^{n} \\binom{n}{k} a^{n-k} b^k",
     previewMode: "inline",
@@ -327,12 +310,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Desigualdad de Cauchy-Schwarz",
       zh: "柯西-施瓦茨不等式",
     },
-    keywords: [
-      "cauchy schwarz",
-      "cauchy schwarz inequality",
-      "desigualdad de cauchy schwarz",
-      "柯西施瓦茨不等式",
-    ],
+    keywords: {
+      en: ["cauchy schwarz inequality", "cauchy schwarz"],
+      es: ["desigualdad de cauchy schwarz", "cauchy schwarz"],
+      zh: ["柯西施瓦茨不等式", "柯西不等式"],
+    },
     snippet: "$$|\\langle u, v \\rangle| \\le \\|u\\|\\,\\|v\\|$$",
     previewLatex: "|\\langle u, v \\rangle| \\le \\|u\\|\\|v\\|",
     previewMode: "inline",
@@ -346,7 +328,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Entropía de Shannon",
       zh: "香农熵",
     },
-    keywords: ["shannon entropy", "entropia de shannon", "香农熵"],
+    keywords: {
+      en: ["shannon entropy", "information entropy"],
+      es: ["entropia de shannon", "entropia"],
+      zh: ["香农熵", "信息熵"],
+    },
     snippet: "$$H(X) = -\\sum_{i} p(x_i) \\log_2 p(x_i)$$",
     previewLatex: "H(X) = -\\sum_i p(x_i)\\log_2 p(x_i)",
     previewMode: "inline",
@@ -360,7 +346,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Función Softmax",
       zh: "Softmax 函数",
     },
-    keywords: ["softmax function", "funcion softmax", "softmax", "归一化指数函数"],
+    keywords: {
+      en: ["softmax function", "softmax"],
+      es: ["funcion softmax", "softmax"],
+      zh: ["softmax函数", "归一化指数函数"],
+    },
     snippet: "$$\\operatorname{softmax}(z_i) = \\frac{e^{z_i}}{\\sum_{j} e^{z_j}}$$",
     previewLatex: "\\operatorname{softmax}(z_i) = \\frac{e^{z_i}}{\\sum_j e^{z_j}}",
     previewMode: "inline",
@@ -374,12 +364,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Ecuación de Schrödinger",
       zh: "薛定谔方程",
     },
-    keywords: [
-      "schrodinger equation",
-      "ecuacion de schrodinger",
-      "schrodinger",
-      "薛定谔方程",
-    ],
+    keywords: {
+      en: ["schrodinger equation", "schrodinger"],
+      es: ["ecuacion de schrodinger", "schrodinger"],
+      zh: ["薛定谔方程"],
+    },
     snippet: "$$i\\hbar \\frac{\\partial}{\\partial t}\\Psi = \\hat{H}\\Psi$$",
     previewLatex: "i\\hbar\\frac{\\partial}{\\partial t}\\Psi = \\hat{H}\\Psi",
     previewMode: "inline",
@@ -393,13 +382,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Principio de incertidumbre",
       zh: "海森堡不确定性原理",
     },
-    keywords: [
-      "heisenberg uncertainty",
-      "uncertainty principle",
-      "principio de incertidumbre",
-      "heisenberg",
-      "不确定性原理",
-    ],
+    keywords: {
+      en: ["heisenberg uncertainty", "uncertainty principle", "heisenberg"],
+      es: ["principio de incertidumbre", "incertidumbre de heisenberg", "heisenberg"],
+      zh: ["海森堡不确定性原理", "不确定性原理"],
+    },
     snippet: "$$\\Delta x\\,\\Delta p \\ge \\frac{\\hbar}{2}$$",
     previewLatex: "\\Delta x\\,\\Delta p \\ge \\frac{\\hbar}{2}",
     previewMode: "inline",
@@ -413,12 +400,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Equivalencia masa-energía",
       zh: "质能方程",
     },
-    keywords: [
-      "mass energy equivalence",
-      "equivalencia masa energia",
-      "einstein",
-      "质能方程",
-    ],
+    keywords: {
+      en: ["mass energy equivalence", "mass energy", "einstein"],
+      es: ["equivalencia masa energia", "masa energia", "einstein"],
+      zh: ["质能方程", "爱因斯坦质能方程"],
+    },
     snippet: "\\(E = mc^2\\)",
     previewLatex: "E = mc^2",
     previewMode: "inline",
@@ -432,12 +418,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Ley de gases ideales",
       zh: "理想气体状态方程",
     },
-    keywords: [
-      "ideal gas law",
-      "ley de gases ideales",
-      "gases ideales",
-      "理想气体状态方程",
-    ],
+    keywords: {
+      en: ["ideal gas law", "ideal gas"],
+      es: ["ley de gases ideales", "gases ideales"],
+      zh: ["理想气体状态方程", "理想气体方程"],
+    },
     snippet: "\\(PV = nRT\\)",
     previewLatex: "PV = nRT",
     previewMode: "inline",
@@ -451,7 +436,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Ley de Gauss (Maxwell)",
       zh: "高斯定律（麦克斯韦）",
     },
-    keywords: ["gauss law", "ley de gauss", "maxwell", "麦克斯韦方程", "高斯定律"],
+    keywords: {
+      en: ["gauss law", "maxwell equations", "maxwell"],
+      es: ["ley de gauss", "ecuaciones de maxwell", "maxwell"],
+      zh: ["高斯定律", "麦克斯韦方程"],
+    },
     snippet: "$$\\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0}$$",
     previewLatex: "\\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0}",
     previewMode: "inline",
@@ -465,12 +454,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Ecuación de Navier-Stokes",
       zh: "纳维-斯托克斯方程",
     },
-    keywords: [
-      "navier stokes",
-      "ecuacion de navier stokes",
-      "navier stokes equation",
-      "纳维斯托克斯方程",
-    ],
+    keywords: {
+      en: ["navier stokes equation", "navier stokes"],
+      es: ["ecuacion de navier stokes", "navier stokes"],
+      zh: ["纳维斯托克斯方程"],
+    },
     snippet:
       "$$\\rho\\left(\\frac{\\partial \\mathbf{u}}{\\partial t} + \\mathbf{u}\\cdot\\nabla\\mathbf{u}\\right) = -\\nabla p + \\mu\\nabla^2\\mathbf{u} + \\mathbf{f}$$",
     previewLatex:
@@ -486,7 +474,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Matriz 2x2",
       zh: "2x2 矩阵模板",
     },
-    keywords: ["matrix 2x2", "2x2 matrix", "matriz 2x2", "二阶矩阵", "矩阵"],
+    keywords: {
+      en: ["matrix 2x2", "2x2 matrix"],
+      es: ["matriz 2x2"],
+      zh: ["二阶矩阵", "矩阵模板", "矩阵"],
+    },
     snippet: "$$\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}$$",
     previewLatex: "\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}",
     previewMode: "inline",
@@ -500,12 +492,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Función por partes",
       zh: "分段函数",
     },
-    keywords: [
-      "piecewise function",
-      "funcion por partes",
-      "funcion a trozos",
-      "分段函数",
-    ],
+    keywords: {
+      en: ["piecewise function", "piecewise"],
+      es: ["funcion por partes", "funcion a trozos"],
+      zh: ["分段函数"],
+    },
     snippet:
       "$$f(x) = \\begin{cases} x^2 & x \\ge 0 \\\\ -x & x < 0 \\end{cases}$$",
     previewLatex:
@@ -521,7 +512,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Reacción de fotosíntesis",
       zh: "光合作用反应式",
     },
-    keywords: ["photosynthesis", "fotosintesis", "光合作用"],
+    keywords: {
+      en: ["photosynthesis reaction", "photosynthesis"],
+      es: ["reaccion de fotosintesis", "fotosintesis"],
+      zh: ["光合作用反应式", "光合作用"],
+    },
     snippet: "$$\\ce{6 CO2 + 6 H2O -> C6H12O6 + 6 O2}$$",
     previewLatex: "\\ce{6 CO2 + 6 H2O -> C6H12O6 + 6 O2}",
     previewMode: "inline",
@@ -535,12 +530,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
       es: "Equilibrio químico",
       zh: "化学平衡反应",
     },
-    keywords: [
-      "chemical equilibrium",
-      "equilibrio quimico",
-      "reaccion reversible",
-      "化学平衡",
-    ],
+    keywords: {
+      en: ["chemical equilibrium", "reversible reaction"],
+      es: ["equilibrio quimico", "reaccion reversible"],
+      zh: ["化学平衡反应", "化学平衡"],
+    },
     snippet: "$$\\ce{CO2 + C <=> 2 CO}$$",
     previewLatex: "\\ce{CO2 + C <=> 2 CO}",
     previewMode: "inline",
@@ -548,11 +542,15 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
     ambientEligible: true,
   },
 
-  // --- LaTeX Command Templates (triggered via `\...` or `:...`) ---
+  // --- LaTeX Command Templates (triggered via `\...`, `:...`, or Explorer) ---
   {
     id: "cmd-frac",
     labels: { en: "Fraction", es: "Fracción", zh: "分数" },
-    keywords: ["\\frac", "frac", "fraction", "fraccion", "分数"],
+    keywords: {
+      en: ["\\frac", "frac", "fraction"],
+      es: ["\\frac", "frac", "fraccion"],
+      zh: ["\\frac", "frac", "分数"],
+    },
     snippet: "\\frac{}{}",
     previewLatex: "\\frac{a}{b}",
     previewMode: "inline",
@@ -562,7 +560,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-sqrt",
     labels: { en: "Square root", es: "Raíz cuadrada", zh: "平方根" },
-    keywords: ["\\sqrt", "sqrt", "square root", "raiz", "平方根"],
+    keywords: {
+      en: ["\\sqrt", "sqrt", "square root", "root"],
+      es: ["\\sqrt", "sqrt", "raiz cuadrada", "raiz"],
+      zh: ["\\sqrt", "sqrt", "平方根", "根号"],
+    },
     snippet: "\\sqrt{}",
     previewLatex: "\\sqrt{x}",
     previewMode: "inline",
@@ -572,7 +574,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-sum",
     labels: { en: "Summation", es: "Sumatoria", zh: "求和" },
-    keywords: ["\\sum", "sum", "summation", "sumatoria", "求和"],
+    keywords: {
+      en: ["\\sum", "sum", "summation"],
+      es: ["\\sum", "sum", "sumatoria"],
+      zh: ["\\sum", "sum", "求和"],
+    },
     snippet: "\\sum_{n=1}^{\\infty} ",
     previewLatex: "\\sum_{n=1}^{\\infty}",
     previewMode: "inline",
@@ -581,7 +587,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-int",
     labels: { en: "Definite integral", es: "Integral definida", zh: "定积分" },
-    keywords: ["\\int", "int", "integral", "integral definida", "definite integral", "积分"],
+    keywords: {
+      en: ["\\int", "int", "integral", "definite integral"],
+      es: ["\\int", "int", "integral", "integral definida"],
+      zh: ["\\int", "int", "定积分", "积分"],
+    },
     snippet: "\\int_{a}^{b} \\,dx",
     previewLatex: "\\int_a^b f(x)\\,dx",
     previewMode: "inline",
@@ -591,7 +601,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-int-indef",
     labels: { en: "Indefinite integral", es: "Integral indefinida", zh: "不定积分" },
-    keywords: ["\\int", "int", "integral", "integral indefinida", "indefinite integral", "不定积分"],
+    keywords: {
+      en: ["\\int", "int", "integral", "indefinite integral"],
+      es: ["\\int", "int", "integral", "integral indefinida"],
+      zh: ["\\int", "int", "不定积分", "积分"],
+    },
     snippet: "\\int \\,dx",
     previewLatex: "\\int f(x)\\,dx",
     previewMode: "inline",
@@ -601,7 +615,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-deriv",
     labels: { en: "Derivative", es: "Derivada", zh: "导数" },
-    keywords: ["deriv", "derivative", "derivada", "d/dx", "导数"],
+    keywords: {
+      en: ["deriv", "derivative", "d/dx"],
+      es: ["deriv", "derivada", "d/dx"],
+      zh: ["deriv", "导数", "d/dx"],
+    },
     snippet: "\\frac{d}{dx} ",
     previewLatex: "\\frac{d}{dx} f(x)",
     previewMode: "inline",
@@ -610,7 +628,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-lim",
     labels: { en: "Limit", es: "Límite", zh: "极限" },
-    keywords: ["\\lim", "lim", "limit", "limite", "极限"],
+    keywords: {
+      en: ["\\lim", "lim", "limit"],
+      es: ["\\lim", "lim", "limite"],
+      zh: ["\\lim", "lim", "极限"],
+    },
     snippet: "\\lim_{x \\to 0} ",
     previewLatex: "\\lim_{x \\to 0}",
     previewMode: "inline",
@@ -619,7 +641,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-prod",
     labels: { en: "Product", es: "Productoria", zh: "连乘" },
-    keywords: ["\\prod", "prod", "product", "productoria", "连乘"],
+    keywords: {
+      en: ["\\prod", "prod", "product"],
+      es: ["\\prod", "prod", "productoria"],
+      zh: ["\\prod", "prod", "连乘"],
+    },
     snippet: "\\prod_{i=1}^{n} ",
     previewLatex: "\\prod_{i=1}^{n}",
     previewMode: "inline",
@@ -628,7 +654,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-binom",
     labels: { en: "Binomial coefficient", es: "Coeficiente binomial", zh: "二项式系数" },
-    keywords: ["\\binom", "binom", "combinatoria", "二项式系数"],
+    keywords: {
+      en: ["\\binom", "binom", "binomial", "choose"],
+      es: ["\\binom", "binom", "combinatoria", "binomial"],
+      zh: ["\\binom", "binom", "二项式系数", "组合数"],
+    },
     snippet: "\\binom{}{}",
     previewLatex: "\\binom{n}{k}",
     previewMode: "inline",
@@ -638,7 +668,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-ce",
     labels: { en: "Chemistry formula (mhchem)", es: "Fórmula química (mhchem)", zh: "化学式 (mhchem)" },
-    keywords: ["\\ce", "ce", "chemistry", "quimica", "agua", "water", "化学式"],
+    keywords: {
+      en: ["\\ce", "ce", "chemistry", "water"],
+      es: ["\\ce", "ce", "quimica", "agua"],
+      zh: ["\\ce", "ce", "化学式", "化学"],
+    },
     snippet: "\\ce{}",
     previewLatex: "\\ce{H2O}",
     previewMode: "inline",
@@ -648,7 +682,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-pu",
     labels: { en: "Physical unit (mhchem)", es: "Unidad física (mhchem)", zh: "物理单位 (mhchem)" },
-    keywords: ["\\pu", "pu", "unit", "unidad", "物理单位"],
+    keywords: {
+      en: ["\\pu", "pu", "unit"],
+      es: ["\\pu", "pu", "unidad"],
+      zh: ["\\pu", "pu", "物理单位", "单位"],
+    },
     snippet: "\\pu{}",
     previewLatex: "\\pu{9.8 m/s^2}",
     previewMode: "inline",
@@ -658,7 +696,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-infty",
     labels: { en: "Infinity", es: "Infinito", zh: "无穷大" },
-    keywords: ["\\infty", "infty", "infinity", "infinito", "无穷"],
+    keywords: {
+      en: ["\\infty", "infty", "infinity"],
+      es: ["\\infty", "infty", "infinito"],
+      zh: ["\\infty", "infty", "无穷", "无穷大"],
+    },
     snippet: "\\infty",
     previewLatex: "\\infty",
     previewMode: "inline",
@@ -667,7 +709,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-alpha",
     labels: { en: "Greek alpha", es: "Alfa griega", zh: "希腊字母 α" },
-    keywords: ["\\alpha", "alpha", "alfa"],
+    keywords: {
+      en: ["\\alpha", "alpha"],
+      es: ["\\alpha", "alpha", "alfa"],
+      zh: ["\\alpha", "alpha", "阿尔法"],
+    },
     snippet: "\\alpha",
     previewLatex: "\\alpha",
     previewMode: "inline",
@@ -676,7 +722,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-beta",
     labels: { en: "Greek beta", es: "Beta griega", zh: "希腊字母 β" },
-    keywords: ["\\beta", "beta"],
+    keywords: {
+      en: ["\\beta", "beta"],
+      es: ["\\beta", "beta"],
+      zh: ["\\beta", "beta", "贝塔"],
+    },
     snippet: "\\beta",
     previewLatex: "\\beta",
     previewMode: "inline",
@@ -685,7 +735,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-gamma",
     labels: { en: "Greek gamma", es: "Gamma griega", zh: "希腊字母 γ" },
-    keywords: ["\\gamma", "gamma"],
+    keywords: {
+      en: ["\\gamma", "gamma"],
+      es: ["\\gamma", "gamma"],
+      zh: ["\\gamma", "gamma", "伽马"],
+    },
     snippet: "\\gamma",
     previewLatex: "\\gamma",
     previewMode: "inline",
@@ -694,7 +748,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-delta",
     labels: { en: "Greek delta", es: "Delta griega", zh: "希腊字母 Δ" },
-    keywords: ["\\delta", "\\Delta", "delta"],
+    keywords: {
+      en: ["\\delta", "\\Delta", "delta"],
+      es: ["\\delta", "\\Delta", "delta"],
+      zh: ["\\delta", "\\Delta", "delta", "德尔塔"],
+    },
     snippet: "\\Delta",
     previewLatex: "\\Delta",
     previewMode: "inline",
@@ -703,7 +761,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-theta",
     labels: { en: "Greek theta", es: "Theta griega", zh: "希腊字母 θ" },
-    keywords: ["\\theta", "theta", "tita"],
+    keywords: {
+      en: ["\\theta", "theta"],
+      es: ["\\theta", "theta", "tita"],
+      zh: ["\\theta", "theta", "西塔"],
+    },
     snippet: "\\theta",
     previewLatex: "\\theta",
     previewMode: "inline",
@@ -712,7 +774,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-lambda",
     labels: { en: "Greek lambda", es: "Lambda griega", zh: "希腊字母 λ" },
-    keywords: ["\\lambda", "lambda"],
+    keywords: {
+      en: ["\\lambda", "lambda"],
+      es: ["\\lambda", "lambda"],
+      zh: ["\\lambda", "lambda", "兰姆达"],
+    },
     snippet: "\\lambda",
     previewLatex: "\\lambda",
     previewMode: "inline",
@@ -721,7 +787,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-pi",
     labels: { en: "Pi constant", es: "Constante Pi", zh: "圆周率 π" },
-    keywords: ["\\pi", "pi"],
+    keywords: {
+      en: ["\\pi", "pi"],
+      es: ["\\pi", "pi"],
+      zh: ["\\pi", "pi", "圆周率"],
+    },
     snippet: "\\pi",
     previewLatex: "\\pi",
     previewMode: "inline",
@@ -730,7 +800,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-sigma",
     labels: { en: "Greek sigma", es: "Sigma griega", zh: "希腊字母 σ" },
-    keywords: ["\\sigma", "sigma"],
+    keywords: {
+      en: ["\\sigma", "sigma"],
+      es: ["\\sigma", "sigma"],
+      zh: ["\\sigma", "sigma", "西格玛"],
+    },
     snippet: "\\sigma",
     previewLatex: "\\sigma",
     previewMode: "inline",
@@ -739,7 +813,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-omega",
     labels: { en: "Greek omega", es: "Omega griega", zh: "希腊字母 ω" },
-    keywords: ["\\omega", "omega"],
+    keywords: {
+      en: ["\\omega", "omega"],
+      es: ["\\omega", "omega"],
+      zh: ["\\omega", "omega", "欧米茄"],
+    },
     snippet: "\\omega",
     previewLatex: "\\omega",
     previewMode: "inline",
@@ -748,7 +826,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-zeta",
     labels: { en: "Greek zeta", es: "Zeta griega", zh: "希腊字母 ζ" },
-    keywords: ["\\zeta", "zeta"],
+    keywords: {
+      en: ["\\zeta", "zeta"],
+      es: ["\\zeta", "zeta"],
+      zh: ["\\zeta", "zeta", "泽塔"],
+    },
     snippet: "\\zeta",
     previewLatex: "\\zeta",
     previewMode: "inline",
@@ -757,7 +839,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-partial",
     labels: { en: "Partial derivative", es: "Derivada parcial", zh: "偏导符号" },
-    keywords: ["\\partial", "partial", "parcial"],
+    keywords: {
+      en: ["\\partial", "partial"],
+      es: ["\\partial", "partial", "parcial"],
+      zh: ["\\partial", "partial", "偏导"],
+    },
     snippet: "\\partial",
     previewLatex: "\\partial",
     previewMode: "inline",
@@ -766,7 +852,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-nabla",
     labels: { en: "Nabla / Gradient", es: "Nabla / Gradiente", zh: "梯度算子" },
-    keywords: ["\\nabla", "nabla", "gradient", "gradiente"],
+    keywords: {
+      en: ["\\nabla", "nabla", "gradient"],
+      es: ["\\nabla", "nabla", "gradiente"],
+      zh: ["\\nabla", "nabla", "梯度"],
+    },
     snippet: "\\nabla",
     previewLatex: "\\nabla",
     previewMode: "inline",
@@ -775,7 +865,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-forall",
     labels: { en: "For all", es: "Para todo", zh: "全称量词" },
-    keywords: ["\\forall", "forall", "para todo"],
+    keywords: {
+      en: ["\\forall", "forall", "for all"],
+      es: ["\\forall", "forall", "para todo"],
+      zh: ["\\forall", "forall", "全称量词", "任意"],
+    },
     snippet: "\\forall ",
     previewLatex: "\\forall x",
     previewMode: "inline",
@@ -784,7 +878,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-exists",
     labels: { en: "There exists", es: "Existe", zh: "存在量词" },
-    keywords: ["\\exists", "exists", "existe"],
+    keywords: {
+      en: ["\\exists", "exists", "there exists"],
+      es: ["\\exists", "exists", "existe"],
+      zh: ["\\exists", "exists", "存在量词", "存在"],
+    },
     snippet: "\\exists ",
     previewLatex: "\\exists x",
     previewMode: "inline",
@@ -793,7 +891,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-mathbb-r",
     labels: { en: "Real numbers R", es: "Números reales R", zh: "实数集 R" },
-    keywords: ["\\mathbb", "mathbb", "reals", "reales", "实数"],
+    keywords: {
+      en: ["\\mathbb", "mathbb", "reals", "real numbers"],
+      es: ["\\mathbb", "mathbb", "reales", "numeros reales"],
+      zh: ["\\mathbb", "mathbb", "实数", "实数集"],
+    },
     snippet: "\\mathbb{R}",
     previewLatex: "\\mathbb{R}",
     previewMode: "inline",
@@ -802,7 +904,11 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-vec",
     labels: { en: "Vector arrow", es: "Vector", zh: "向量" },
-    keywords: ["\\vec", "vec", "vector", "向量"],
+    keywords: {
+      en: ["\\vec", "vec", "vector"],
+      es: ["\\vec", "vec", "vector"],
+      zh: ["\\vec", "vec", "向量"],
+    },
     snippet: "\\vec{}",
     previewLatex: "\\vec{v}",
     previewMode: "inline",
@@ -907,11 +1013,15 @@ export function extractAutocompleteContext(
     }
 
     // 3. Ambient natural phrase right before cursor (outside math delimiters)
-    const clauseMatch = before.match(/([^\n.!?,;()[\]{}$\\]{4,50})$/);
+    // Accepts >= 2 chars when CJK characters are present (e.g. "函数", "欧拉") or >= 4 chars for Latin scripts.
+    const clauseMatch = before.match(
+      /([^\n.!?,;()[\]{}$\\。，！？；（）]{2,50})$/
+    );
     if (clauseMatch) {
       const rawClause = clauseMatch[1];
       const normalized = normalizeQuery(rawClause);
-      if (normalized.length >= 4) {
+      const hasCjk = /[\u4e00-\u9fff]/.test(normalized);
+      if (normalized.length >= 4 || (hasCjk && normalized.length >= 2)) {
         return {
           mode: "ambient",
           query: rawClause,
@@ -925,6 +1035,42 @@ export function extractAutocompleteContext(
 
   return null;
 }
+
+const CJK_CHAR_RE = /[\u4e00-\u9fff]/;
+
+/**
+ * Common non-mathematical words that may appear inside multi-word formula titles
+ * (e.g. "Basel problem", "Normal distribution") and must not trigger ambient
+ * suggestions when typed alone.
+ */
+const AMBIENT_STOPWORDS = new Set([
+  "problem",
+  "problema",
+  "normal",
+  "definition",
+  "definicion",
+  "principle",
+  "principio",
+  "partes",
+  "trozos",
+  "campana",
+  "ideales",
+  "fundamental",
+  "reversible",
+  "chemical",
+  "quimico",
+  "energy",
+  "energia",
+  "reaction",
+  "reaccion",
+  "information",
+  "定义",
+  "原理",
+  "作用",
+  "状态",
+  "信息",
+  "理想",
+]);
 
 /**
  * Returns the start index in `rawClause` corresponding to the trailing `wordCount`
@@ -956,6 +1102,84 @@ function findTrailingPhraseStart(rawClause: string, wordCount: number): number {
 }
 
 /**
+ * Extracts trailing phrase candidates for ambient matching:
+ * - For whitespace-delimited languages (EN/ES): trailing 1..5 words.
+ * - For CJK clauses ending in Chinese characters (ZH): also trailing 2..10 char suffixes
+ *   so phrases like `"看看函数"` or `"看看黎曼函数"` match without requiring spaces.
+ */
+function extractAmbientCandidates(
+  rawClause: string,
+  clauseOffset: number
+): Array<{ phraseNorm: string; startInText: number }> {
+  const candidates: Array<{ phraseNorm: string; startInText: number }> = [];
+  const seen = new Set<string>();
+
+  const pushCandidate = (rawSlice: string, startInText: number): void => {
+    if (/\s$/.test(rawSlice)) return;
+    const phraseNorm = normalizeQuery(rawSlice);
+    const hasCjk = CJK_CHAR_RE.test(phraseNorm);
+    if (phraseNorm.length < 4 && !(hasCjk && phraseNorm.length >= 2)) {
+      return;
+    }
+    const key = `${startInText}:${phraseNorm}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    candidates.push({ phraseNorm, startInText });
+  };
+
+  for (let wordCount = 5; wordCount >= 1; wordCount -= 1) {
+    const relStart = findTrailingPhraseStart(rawClause, wordCount);
+    if (relStart === -1) continue;
+    pushCandidate(rawClause.slice(relStart), clauseOffset + relStart);
+  }
+
+  if (rawClause.length >= 2 && CJK_CHAR_RE.test(rawClause[rawClause.length - 1])) {
+    const maxLen = Math.min(rawClause.length, 10);
+    for (let len = maxLen; len >= 2; len -= 1) {
+      const relStart = rawClause.length - len;
+      const slice = rawClause.slice(relStart);
+      if (/\s/.test(slice)) continue;
+      pushCandidate(slice, clauseOffset + relStart);
+    }
+  }
+
+  return candidates;
+}
+
+function scoreExplicitKeywords(
+  entry: FormulaEntry,
+  q: string,
+  tokens: string[],
+  labelNorm: string,
+  locale: Locale
+): number {
+  let score = 0;
+
+  for (const loc of SUPPORTED_LOCALES) {
+    const penalty = loc === locale ? 0 : 15;
+    for (const kw of entry.keywords[loc]) {
+      const kwNorm = normalizeQuery(kw);
+      if (kwNorm === q) {
+        score = Math.max(score, 125 - penalty);
+      } else if (kwNorm.startsWith(q)) {
+        score = Math.max(score, 100 - penalty);
+      } else if (kwNorm.split(" ").some((w) => w.startsWith(q))) {
+        score = Math.max(score, 90 - penalty);
+      } else if (kwNorm.includes(q)) {
+        score = Math.max(score, 75 - penalty);
+      } else if (
+        tokens.length > 1 &&
+        tokens.every((tok) => kwNorm.includes(tok) || labelNorm.includes(tok))
+      ) {
+        score = Math.max(score, 70 - penalty);
+      }
+    }
+  }
+
+  return score;
+}
+
+/**
  * Searches `FORMULA_CATALOG` for the given `AutocompleteContext` and returns
  * ranked suggestions with exact replacement spans.
  */
@@ -974,7 +1198,7 @@ export function searchFormulaCatalog(
       }
       let score = 0;
       const snipLower = entry.snippet.toLowerCase();
-      for (const kw of entry.keywords) {
+      for (const kw of entry.keywords[locale]) {
         const kwLower = kw.toLowerCase();
         if (kwLower === q) {
           score = Math.max(score, 120);
@@ -1015,23 +1239,10 @@ export function searchFormulaCatalog(
         score = 80;
       }
 
-      for (const kw of entry.keywords) {
-        const kwNorm = normalizeQuery(kw);
-        if (kwNorm === q) {
-          score = Math.max(score, 125);
-        } else if (kwNorm.startsWith(q)) {
-          score = Math.max(score, 100);
-        } else if (kwNorm.split(" ").some((w) => w.startsWith(q))) {
-          score = Math.max(score, 90);
-        } else if (kwNorm.includes(q)) {
-          score = Math.max(score, 75);
-        } else if (
-          tokens.length > 1 &&
-          tokens.every((tok) => kwNorm.includes(tok) || labelNorm.includes(tok))
-        ) {
-          score = Math.max(score, 70);
-        }
-      }
+      score = Math.max(
+        score,
+        scoreExplicitKeywords(entry, q, tokens, labelNorm, locale)
+      );
 
       if (score > 0) {
         // Slightly prefer full named formulas over raw command templates on ties in `:query` mode
@@ -1047,44 +1258,48 @@ export function searchFormulaCatalog(
       }
     }
   } else {
-    // Ambient mode: high-precision match on the trailing 1..5 words (zero prose spam)
-    const rawClause = context.query;
-    const clauseOffset = context.replaceStart;
-
-    // Evaluate longest trailing phrase first (5 words down to 1 word)
-    const candidates: Array<{ phraseNorm: string; startInText: number }> = [];
-    for (let wordCount = 5; wordCount >= 1; wordCount -= 1) {
-      const relStart = findTrailingPhraseStart(rawClause, wordCount);
-      if (relStart === -1) continue;
-      const rawSlice = rawClause.slice(relStart);
-      // Do not trigger while user already moved past the phrase with trailing spaces
-      if (/\s$/.test(rawSlice)) continue;
-      const phraseNorm = normalizeQuery(rawSlice);
-      if (phraseNorm.length >= 4) {
-        candidates.push({ phraseNorm, startInText: clauseOffset + relStart });
-      }
-    }
+    // Ambient mode: strictly scoped to the active UI locale (EN / ES / ZH)
+    const candidates = extractAmbientCandidates(
+      context.query,
+      context.replaceStart
+    );
 
     for (const entry of FORMULA_CATALOG) {
       if (!entry.ambientEligible) continue;
 
+      const localeKeywords = entry.keywords[locale];
       let bestScore = 0;
       let bestStart = context.replaceStart;
 
       for (const cand of candidates) {
         const p = cand.phraseNorm;
-        for (const kw of entry.keywords) {
+        const isCjk = CJK_CHAR_RE.test(p);
+        const isGenericStopword = AMBIENT_STOPWORDS.has(p);
+
+        for (const kw of localeKeywords) {
           const kwNorm = normalizeQuery(kw);
-          // Exact keyword match (works for CJK >= 3 chars or Latin >= 5 chars, e.g. "riemann", "欧拉公式")
           if (kwNorm === p) {
-            const s = 130 + p.length;
+            const s = 140 + p.length;
             if (s > bestScore) {
               bestScore = s;
               bestStart = cand.startInText;
             }
-          } else if (p.length >= 6 && kwNorm.startsWith(p)) {
-            // High-specificity prefix match (e.g. "funcion zeta", "teorema de pita", "formula cuad")
-            const s = 90 + p.length;
+          } else if (
+            !isGenericStopword &&
+            ((isCjk && p.length >= 2) || (!isCjk && p.length >= 6)) &&
+            kwNorm.startsWith(p)
+          ) {
+            const s = 105 + p.length;
+            if (s > bestScore) {
+              bestScore = s;
+              bestStart = cand.startInText;
+            }
+          } else if (
+            !isGenericStopword &&
+            ((!isCjk && p.length >= 6 && kwNorm.split(" ").includes(p)) ||
+              (isCjk && p.length >= 2 && kwNorm.includes(p)))
+          ) {
+            const s = 85 + p.length;
             if (s > bestScore) {
               bestScore = s;
               bestStart = cand.startInText;
@@ -1221,23 +1436,10 @@ export function filterCatalogEntries(
       score = 80;
     }
 
-    for (const kw of entry.keywords) {
-      const kwNorm = normalizeQuery(kw);
-      if (kwNorm === q) {
-        score = Math.max(score, 125);
-      } else if (kwNorm.startsWith(q)) {
-        score = Math.max(score, 100);
-      } else if (kwNorm.split(" ").some((w) => w.startsWith(q))) {
-        score = Math.max(score, 90);
-      } else if (kwNorm.includes(q)) {
-        score = Math.max(score, 75);
-      } else if (
-        tokens.length > 1 &&
-        tokens.every((tok) => kwNorm.includes(tok) || labelNorm.includes(tok))
-      ) {
-        score = Math.max(score, 70);
-      }
-    }
+    score = Math.max(
+      score,
+      scoreExplicitKeywords(entry, q, tokens, labelNorm, locale)
+    );
 
     if (score > 0) {
       scored.push({ entry, score });

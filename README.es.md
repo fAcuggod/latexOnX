@@ -110,7 +110,7 @@ Medidos con `npm run bench` sobre **10.000 publicaciones mixtas de X** (8.000 fÃ
 
 ```bash
 npm run typecheck   # Verifica tipos estrictos con TypeScript (tsc --noEmit)
-npm test            # Ejecuta los 124 tests unitarios, de DOM y equivalencia WASM
+npm test            # Ejecuta los 125 tests unitarios, de DOM y equivalencia WASM
 npm run test:rust   # Ejecuta los 21 tests nativos en Rust (cargo test)
 npm run build:wasm  # Recompila crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # Corre el benchmark TypeScript vs. Rust/WASM (10.000 posts)
