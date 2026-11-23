@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createComposerPreviewController,
+  LAUNCHER_BTN_ATTR,
   PREVIEW_PANEL_ATTR,
 } from "../src/content/composerOverlay.js";
 import type { Locale } from "../src/i18n/messages.js";
@@ -551,6 +552,136 @@ describe("composerOverlay (Milestone B.2)", () => {
 
       expect(spySetter).not.toHaveBeenCalled();
       controller.stop();
+    } finally {
+      if (innerHtmlDescriptor) {
+        Object.defineProperty(Element.prototype, "innerHTML", innerHtmlDescriptor);
+      }
+    }
+  });
+
+  it("shows a discrete launcher button on empty composers to open the Formula Explorer, search, switch tabs, and insert without .innerHTML", () => {
+    vi.useFakeTimers();
+
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+
+    let enableChemistry = true;
+    const controller = createComposerPreviewController(document, () => ({
+      locale: "es",
+      enableChemistry,
+      debounceMs: 50,
+    }));
+
+    const innerHtmlDescriptor = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      "innerHTML"
+    );
+    const spySetter = vi.fn(() => {
+      throw new TypeError("TrustedHTML required");
+    });
+    Object.defineProperty(Element.prototype, "innerHTML", {
+      configurable: true,
+      get: innerHtmlDescriptor?.get,
+      set: spySetter,
+    });
+
+    try {
+      controller.start();
+
+      // 1. Focusing an empty composer keeps the preview panel closed and displays the discrete ∑ launcher
+      textarea.value = "Calculamos ";
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+
+      const launcher = document.querySelector(
+        `[${LAUNCHER_BTN_ATTR}="true"]`
+      ) as HTMLButtonElement;
+      expect(launcher).not.toBeNull();
+      expect(launcher.style.display).toBe("inline-flex");
+      expect(launcher.textContent).toBe("∑");
+      expect(
+        document.querySelector(`[${PREVIEW_PANEL_ATTR}="true"]`)
+      ).toBeNull();
+
+      // 2. Clicking ∑ opens the Formula Explorer + Quick Symbol Bar and hides the launcher
+      launcher.click();
+      expect(launcher.style.display).toBe("none");
+
+      const panel = document.querySelector(
+        `[${PREVIEW_PANEL_ATTR}="true"]`
+      ) as HTMLElement;
+      expect(panel).not.toBeNull();
+      expect(panel.style.display).toBe("block");
+      expect(panel.textContent).toContain("Fórmulas y símbolos");
+      expect(panel.querySelector(".latex-on-x-symbol-bar")).not.toBeNull();
+      expect(panel.querySelector('[data-category="chemistry"]')).not.toBeNull();
+
+      // 3. Searching "integral" keeps the exact search input node alive and filters live
+      const searchInput = panel.querySelector(
+        ".latex-on-x-catalog-search"
+      ) as HTMLInputElement;
+      expect(searchInput).not.toBeNull();
+      searchInput.value = "integral";
+      searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+      // Input element must NOT be destroyed/recreated on keystrokes
+      expect(panel.querySelector(".latex-on-x-catalog-search")).toBe(searchInput);
+      const integralItems = panel.querySelectorAll(
+        ".latex-on-x-catalog-results .latex-on-x-suggestion-item"
+      );
+      expect(integralItems.length).toBeGreaterThanOrEqual(2);
+      expect(panel.querySelector('[data-entry-id="cmd-int"]')).not.toBeNull();
+
+      // 4. Pressing Enter inserts the selected integral into the composer and switches to live preview
+      searchInput.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+      expect(textarea.value).toBe("Calculamos \\(\\int_{a}^{b} \\,dx\\)");
+      expect(panel.querySelector(".latex-on-x-catalog")).toBeNull();
+      expect(panel.textContent).toContain("1 fórmula lista");
+
+      // 5. Clicking the header Catalog button reopens the explorer alongside the live preview
+      const catalogToggle = panel.querySelector(
+        ".latex-on-x-preview-catalog-toggle"
+      ) as HTMLButtonElement;
+      expect(catalogToggle).not.toBeNull();
+      catalogToggle.click();
+      expect(panel.querySelector(".latex-on-x-catalog")).not.toBeNull();
+
+      // Switching category tab to Algebra shows quadratic formula
+      const algebraTab = panel.querySelector(
+        '[data-category="algebra"]'
+      ) as HTMLButtonElement;
+      algebraTab.click();
+      expect(
+        panel.querySelector('[data-entry-id="quadratic-formula"]')
+      ).not.toBeNull();
+
+      // Disabling chemistry removes the chemistry tab
+      enableChemistry = false;
+      controller.refresh();
+      expect(panel.querySelector('[data-category="chemistry"]')).toBeNull();
+
+      // Pressing Escape inside search closes catalog cleanly
+      const activeSearch = panel.querySelector(
+        ".latex-on-x-catalog-search"
+      ) as HTMLInputElement;
+      activeSearch.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Escape",
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+      expect(panel.querySelector(".latex-on-x-catalog")).toBeNull();
+
+      expect(spySetter).not.toHaveBeenCalled();
+      controller.stop();
+      expect(document.querySelector(`[${LAUNCHER_BTN_ATTR}="true"]`)).toBeNull();
     } finally {
       if (innerHtmlDescriptor) {
         Object.defineProperty(Element.prototype, "innerHTML", innerHtmlDescriptor);

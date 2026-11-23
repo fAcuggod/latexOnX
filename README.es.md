@@ -30,8 +30,8 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 
 - **Sintaxis sin colisiones:** soporta `\(...\)` en línea y `$$...$$` / `\[...\]` en bloque, dejando completamente intactos precios y *cashtags*.
 - **Vista previa en vivo al redactar:** panel flotante con *debounce* debajo del compositor de X que renderiza tus fórmulas en tiempo real, avisa antes de publicar si faltan delimitadores o llaves, y ofrece un botón rápido `Pasar a en línea \(...\)` cuando un bloque `$$...$$` aparece en medio de una oración.
-- **Barra rápida de símbolos (`Quick Symbol Bar`):** paleta compacta (`\(x\)`, `$$`, `a/b`, `√`, `x²`, `∑`, `∫`, `π`, `∞`, `≤`, `→`, `\ce`) en el panel del compositor que envuelve texto seleccionado o inserta plantillas LaTeX ubicando el cursor en el primer espacio editable.
-- **Autocompletado inteligente y catálogo por nombre natural:** escribí nombres de fórmulas en español, inglés o chino (ej. `funcion zeta de riemann`, `formula cuadratica`, `teorema de pitagoras`), buscá con `:consulta` o completá comandos `\frac` / `\sum` presionando `Tab` o con un clic.
+- **Explorador de fórmulas y barra rápida de símbolos (`∑`):** un botón discreto `∑` en cualquier compositor enfocado (incluso vacío) abre un buscador de fórmulas y símbolos por categoría (`Básicos`, `Cálculo`, `Álgebra`, `Física`, `Probabilidad`, `Química`) junto con la barra rápida (`\(x\)`, `$$`, `a/b`, `√`, `x²`, `∑`, `∫`, `π`, `∞`, `≤`, `→`, `\ce`).
+- **Autocompletado en línea al escribir:** escribí nombres de fórmulas en español, inglés o chino (ej. `funcion zeta de riemann`, `formula cuadratica`, `teorema de pitagoras`), buscá con `:consulta` o completá comandos `\frac` / `\sum` presionando `Tab` o con un clic.
 - **Compilador de matemática natural con AST (`f(x) = 5x + 2` -> LaTeX):** parser recursivo descendente puro (`Lexer -> AST -> LaTeX`) que previsualiza expresiones cotidianas como `f(x) = 5x + 2`, `(a+b)/(c-d)`, `sqrt(a^2+b^2)`, `det(A) = ad - bc` o `Av = lambda v` en vivo con botón `Convertir a LaTeX` (`Tab`) o exportación directa a `PNG` 3x, ignorando fechas, puntajes y texto común.
 - **Exportación PNG 3x HiDPI en un clic:** botón `PNG` en la cabecera de la vista previa que copia una tarjeta nítida 3x adaptada al tema activo de X directo al portapapeles (pegás con `Ctrl+V` en X, con descarga `.png` automática como respaldo).
 - **Química y unidades físicas (`mhchem`):** renderiza fórmulas químicas, cargas iónicas, flechas de reacción y unidades (`\ce{...}`, `\pu{...}`), activable desde el popup.
@@ -110,7 +110,7 @@ Medidos con `npm run bench` sobre **10.000 publicaciones mixtas de X** (8.000 f�
 
 ```bash
 npm run typecheck   # Verifica tipos estrictos con TypeScript (tsc --noEmit)
-npm test            # Ejecuta los 120 tests unitarios, de DOM y equivalencia WASM
+npm test            # Ejecuta los 124 tests unitarios, de DOM y equivalencia WASM
 npm run test:rust   # Ejecuta los 21 tests nativos en Rust (cargo test)
 npm run build:wasm  # Recompila crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # Corre el benchmark TypeScript vs. Rust/WASM (10.000 posts)

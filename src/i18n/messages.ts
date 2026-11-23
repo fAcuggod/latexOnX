@@ -51,6 +51,18 @@ export interface Messages {
   inlineDisplayTip: string;
   switchToInlineBtn: string;
   symbolBarLabel: string;
+  launcherTooltip: string;
+  catalogToggleBtn: string;
+  catalogToggleTooltip: string;
+  catalogTitle: string;
+  catalogSearchPlaceholder: string;
+  catalogEmpty: string;
+  catBasics: string;
+  catCalculus: string;
+  catAlgebra: string;
+  catPhysics: string;
+  catProbability: string;
+  catChemistry: string;
   languageLabel: string;
 }
 
@@ -104,6 +116,18 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     inlineDisplayTip: "{raw} is in block mode (new line).",
     switchToInlineBtn: "Use inline \\(...\\)",
     symbolBarLabel: "Quick LaTeX symbols",
+    launcherTooltip: "Open LaTeX formulas and symbols",
+    catalogToggleBtn: "Catalog",
+    catalogToggleTooltip: "Browse formulas and symbols",
+    catalogTitle: "Formulas & Symbols",
+    catalogSearchPlaceholder: "Search integral, fraction, limit, zeta...",
+    catalogEmpty: "No matching formulas found.",
+    catBasics: "Basics",
+    catCalculus: "Calculus",
+    catAlgebra: "Algebra",
+    catPhysics: "Physics",
+    catProbability: "Probability",
+    catChemistry: "Chemistry",
     languageLabel: "Language",
   },
   es: {
@@ -155,6 +179,18 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     inlineDisplayTip: "{raw} está en modo bloque (salta de línea).",
     switchToInlineBtn: "Pasar a en línea \\(...\\)",
     symbolBarLabel: "Símbolos rápidos de LaTeX",
+    launcherTooltip: "Abrir fórmulas y símbolos LaTeX",
+    catalogToggleBtn: "Catálogo",
+    catalogToggleTooltip: "Explorar fórmulas y símbolos",
+    catalogTitle: "Fórmulas y símbolos",
+    catalogSearchPlaceholder: "Buscar integral, fracción, límite, zeta...",
+    catalogEmpty: "No se encontraron fórmulas.",
+    catBasics: "Básicos",
+    catCalculus: "Cálculo",
+    catAlgebra: "Álgebra",
+    catPhysics: "Física",
+    catProbability: "Probabilidad",
+    catChemistry: "Química",
     languageLabel: "Idioma",
   },
   zh: {
@@ -206,6 +242,18 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     inlineDisplayTip: "{raw} 为块级公式（会自动换行）。",
     switchToInlineBtn: "改为行内 \\(...\\)",
     symbolBarLabel: "常用 LaTeX 符号",
+    launcherTooltip: "打开 LaTeX 公式与符号",
+    catalogToggleBtn: "公式库",
+    catalogToggleTooltip: "浏览公式与符号",
+    catalogTitle: "公式与符号",
+    catalogSearchPlaceholder: "搜索积分、分数、极限、欧拉...",
+    catalogEmpty: "未找到匹配的公式。",
+    catBasics: "基础",
+    catCalculus: "微积分",
+    catAlgebra: "代数",
+    catPhysics: "物理",
+    catProbability: "概率",
+    catChemistry: "化学",
     languageLabel: "语言",
   },
 };

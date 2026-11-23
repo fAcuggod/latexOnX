@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   applyFormulaInsertion,
+  CATALOG_CATEGORIES,
   extractAutocompleteContext,
+  filterCatalogEntries,
   FORMULA_CATALOG,
+  insertCatalogEntryAtSelection,
   isCursorInsideMath,
   normalizeQuery,
   searchFormulaCatalog,
@@ -136,3 +139,75 @@ describe("formulaCatalog (v1.1 Smart Autocomplete Core)", () => {
     }
   });
 });
+
+describe("formulaCatalog (v1.4 Formula Explorer & Search)", () => {
+  it("lists entries by category and excludes chemistry entries when enableChemistry is false", () => {
+    expect(CATALOG_CATEGORIES[0]).toBe("command");
+
+    const basics = filterCatalogEntries({ category: "command", locale: "es" });
+    expect(basics.length).toBeGreaterThan(10);
+    expect(basics.every((e) => e.category === "command")).toBe(true);
+    expect(basics.some((e) => e.id === "cmd-int")).toBe(true);
+    expect(basics.some((e) => e.id === "cmd-int-indef")).toBe(true);
+
+    const chemOn = filterCatalogEntries({
+      category: "chemistry",
+      enableChemistry: true,
+    });
+    expect(chemOn.length).toBeGreaterThan(0);
+
+    const chemOff = filterCatalogEntries({
+      category: "chemistry",
+      enableChemistry: false,
+    });
+    expect(chemOff).toEqual([]);
+
+    // Search across all categories ignores chemistry when disabled
+    const searchChemOff = filterCatalogEntries({
+      query: "agua",
+      locale: "es",
+      enableChemistry: false,
+    });
+    expect(searchChemOff.some((e) => e.category === "chemistry")).toBe(false);
+  });
+
+  it("searches across all categories accent-insensitively by natural name or LaTeX command", () => {
+    // Searching "integral" finds definite, indefinite, and Gaussian integrals regardless of active tab
+    const integrals = filterCatalogEntries({
+      query: "integral",
+      category: "algebra",
+      locale: "es",
+    });
+    expect(integrals.some((e) => e.id === "cmd-int")).toBe(true);
+    expect(integrals.some((e) => e.id === "cmd-int-indef")).toBe(true);
+    expect(integrals.some((e) => e.id === "gaussian-integral")).toBe(true);
+
+    // Searching with accent-free Spanish or LaTeX command works directly
+    const limits = filterCatalogEntries({ query: "limite", locale: "es" });
+    expect(limits[0].id).toBe("cmd-lim");
+
+    const byCmd = filterCatalogEntries({ query: "\\frac", locale: "en" });
+    expect(byCmd[0].id).toBe("cmd-frac");
+  });
+
+  it("inserts catalog entries at selection, wrapping bare commands outside math and filling braces for selected text", () => {
+    const defInt = FORMULA_CATALOG.find((e) => e.id === "cmd-int")!;
+    const frac = FORMULA_CATALOG.find((e) => e.id === "cmd-frac")!;
+    const sqrt = FORMULA_CATALOG.find((e) => e.id === "cmd-sqrt")!;
+
+    // 1. Inserting an integral into an empty composer auto-wraps in \(...\) and places caret before \,dx
+    const insertedInt = insertCatalogEntryAtSelection("", 0, 0, defInt);
+    expect(insertedInt.text).toBe("\\(\\int_{a}^{b} \\,dx\\)");
+    expect(insertedInt.cursorPos).toBe(2 + 13);
+
+    // 2. Highlighted selection + \sqrt{} puts selection inside braces and auto-wraps outside math
+    const wrappedSqrt = insertCatalogEntryAtSelection("Sea x + 1 listo", 4, 9, sqrt);
+    expect(wrappedSqrt.text).toBe("Sea \\(\\sqrt{x + 1}\\) listo");
+
+    // 3. Highlighted selection + \frac{}{} inside math puts selection in numerator and moves caret to denominator
+    const wrappedFrac = insertCatalogEntryAtSelection("$$a+b$$", 2, 5, frac);
+    expect(wrappedFrac.text).toBe("$$\\frac{a+b}{}$$");
+    expect(wrappedFrac.cursorPos).toBe("$$\\frac{a+b}{".length);
+  });
+});
+

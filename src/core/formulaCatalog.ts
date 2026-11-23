@@ -581,11 +581,30 @@ export const FORMULA_CATALOG: readonly FormulaEntry[] = [
   {
     id: "cmd-int",
     labels: { en: "Definite integral", es: "Integral definida", zh: "定积分" },
-    keywords: ["\\int", "int", "integral", "积分"],
+    keywords: ["\\int", "int", "integral", "integral definida", "definite integral", "积分"],
     snippet: "\\int_{a}^{b} \\,dx",
     previewLatex: "\\int_a^b f(x)\\,dx",
     previewMode: "inline",
     cursorOffset: 13,
+    category: "command",
+  },
+  {
+    id: "cmd-int-indef",
+    labels: { en: "Indefinite integral", es: "Integral indefinida", zh: "不定积分" },
+    keywords: ["\\int", "int", "integral", "integral indefinida", "indefinite integral", "不定积分"],
+    snippet: "\\int \\,dx",
+    previewLatex: "\\int f(x)\\,dx",
+    previewMode: "inline",
+    cursorOffset: 5,
+    category: "command",
+  },
+  {
+    id: "cmd-deriv",
+    labels: { en: "Derivative", es: "Derivada", zh: "导数" },
+    keywords: ["deriv", "derivative", "derivada", "d/dx", "导数"],
+    snippet: "\\frac{d}{dx} ",
+    previewLatex: "\\frac{d}{dx} f(x)",
+    previewMode: "inline",
     category: "command",
   },
   {
@@ -955,17 +974,16 @@ export function searchFormulaCatalog(
       }
       let score = 0;
       const snipLower = entry.snippet.toLowerCase();
-      if (snipLower.startsWith(q)) {
-        score = snipLower === q ? 120 : 100;
-      } else {
-        for (const kw of entry.keywords) {
-          const kwLower = kw.toLowerCase();
-          if (kwLower === q) {
-            score = Math.max(score, 120);
-          } else if (kwLower.startsWith(q)) {
-            score = Math.max(score, 95);
-          }
+      for (const kw of entry.keywords) {
+        const kwLower = kw.toLowerCase();
+        if (kwLower === q) {
+          score = Math.max(score, 120);
+        } else if (kwLower.startsWith(q)) {
+          score = Math.max(score, 105);
         }
+      }
+      if (score === 0 && snipLower.startsWith(q)) {
+        score = snipLower === q ? 120 : 95;
       }
 
       if (score > 0) {
@@ -1127,3 +1145,170 @@ export function applyFormulaInsertion(
 
   return { text: nextText, cursorPos, inserted };
 }
+
+/**
+ * Ordered category tabs displayed in the composer Formula Explorer palette.
+ * `"command"` (Basics) comes first so beginners see integrals, fractions,
+ * roots, limits, and Greek letters immediately without knowing LaTeX syntax.
+ */
+export const CATALOG_CATEGORIES: readonly FormulaCategory[] = [
+  "command",
+  "calculus",
+  "algebra",
+  "physics",
+  "probability",
+  "chemistry",
+];
+
+export interface CatalogFilterOptions {
+  /** Free-text search query (accent-insensitive across EN/ES/ZH and LaTeX commands). */
+  query?: string;
+  /** Active category tab used when `query` is empty. Defaults to `"command"`. */
+  category?: FormulaCategory | "all";
+  /** Active UI locale used to prioritize matching localized titles. */
+  locale?: Locale;
+  /** Whether `mhchem` chemistry entries (`\ce`, `\pu`) should be included. Defaults to `true`. */
+  enableChemistry?: boolean;
+  /** Maximum number of entries returned. Defaults to `12` when searching or `30` per tab. */
+  maxResults?: number;
+}
+
+/**
+ * Pure filtering and ranking engine for the Formula Explorer palette (v1.4).
+ *
+ * - When `query` is non-empty, searches across all enabled categories and ranks by match quality.
+ * - When `query` is empty, returns entries belonging to `category` (or all enabled entries).
+ */
+export function filterCatalogEntries(
+  options: CatalogFilterOptions = {}
+): FormulaEntry[] {
+  const locale: Locale = options.locale ?? "en";
+  const enableChemistry = options.enableChemistry ?? true;
+  const rawQuery = (options.query ?? "").trim();
+  const q = normalizeQuery(rawQuery);
+  const category = options.category ?? "command";
+
+  const enabled = FORMULA_CATALOG.filter(
+    (entry) => enableChemistry || entry.category !== "chemistry"
+  );
+
+  if (q.length === 0) {
+    const limit = options.maxResults ?? 30;
+    const list =
+      category === "all"
+        ? enabled
+        : enabled.filter((entry) => entry.category === category);
+    return list.slice(0, limit);
+  }
+
+  const limit = options.maxResults ?? 12;
+  const tokens = q.split(" ").filter(Boolean);
+  const qLower = rawQuery.toLowerCase();
+  const scored: Array<{ entry: FormulaEntry; score: number }> = [];
+
+  for (const entry of enabled) {
+    const labelNorm = normalizeQuery(entry.labels[locale]);
+    const snippetLower = entry.snippet.toLowerCase();
+    let score = 0;
+
+    if (labelNorm === q || snippetLower === qLower) {
+      score = 130;
+    } else if (labelNorm.startsWith(q) || snippetLower.startsWith(qLower)) {
+      score = 108;
+    } else if (labelNorm.split(" ").some((w) => w.startsWith(q))) {
+      score = 94;
+    } else if (labelNorm.includes(q) || snippetLower.includes(qLower)) {
+      score = 80;
+    }
+
+    for (const kw of entry.keywords) {
+      const kwNorm = normalizeQuery(kw);
+      if (kwNorm === q) {
+        score = Math.max(score, 125);
+      } else if (kwNorm.startsWith(q)) {
+        score = Math.max(score, 100);
+      } else if (kwNorm.split(" ").some((w) => w.startsWith(q))) {
+        score = Math.max(score, 90);
+      } else if (kwNorm.includes(q)) {
+        score = Math.max(score, 75);
+      } else if (
+        tokens.length > 1 &&
+        tokens.every((tok) => kwNorm.includes(tok) || labelNorm.includes(tok))
+      ) {
+        score = Math.max(score, 70);
+      }
+    }
+
+    if (score > 0) {
+      scored.push({ entry, score });
+    }
+  }
+
+  scored.sort((a, b) => b.score - a.score || a.entry.id.localeCompare(b.entry.id));
+  return scored.slice(0, limit).map((item) => item.entry);
+}
+
+/**
+ * Inserts a catalog entry chosen from the Formula Explorer palette at `[selectionStart, selectionEnd]`.
+ *
+ * - Automatically wraps bare LaTeX commands in inline `\(...\)` when the caret is outside math.
+ * - If text is highlighted and the entry's `cursorOffset` points inside an empty `{}` pair
+ *   (e.g. `\sqrt{}`, `\frac{}{}`, `\ce{}`, `\vec{}`), places the selected text inside those braces.
+ */
+export function insertCatalogEntryAtSelection(
+  text: string,
+  selectionStart: number,
+  selectionEnd: number,
+  entry: FormulaEntry
+): { text: string; cursorPos: number; inserted: string } {
+  const start = Math.max(0, Math.min(selectionStart, text.length));
+  const end = Math.max(start, Math.min(selectionEnd, text.length));
+  const selected = text.slice(start, end);
+  const insideMath = isCursorInsideMath(text, start);
+
+  // If the user highlighted text and picked a brace template (`\sqrt{}`, `\frac{}{}`, etc.),
+  // inject the selection cleanly inside the first `{}` slot.
+  if (
+    selected.length > 0 &&
+    entry.cursorOffset !== undefined &&
+    entry.snippet.slice(entry.cursorOffset - 1, entry.cursorOffset + 1) === "{}"
+  ) {
+    const isBareCommand =
+      (entry.category === "command" ||
+        (entry.category === "chemistry" && entry.snippet.startsWith("\\"))) &&
+      !entry.snippet.startsWith("$$") &&
+      !entry.snippet.startsWith("\\(") &&
+      !entry.snippet.startsWith("\\[");
+
+    const openWrap = isBareCommand && !insideMath ? "\\(" : "";
+    const closeWrap = isBareCommand && !insideMath ? "\\)" : "";
+    const filledSnippet =
+      entry.snippet.slice(0, entry.cursorOffset) +
+      selected +
+      entry.snippet.slice(entry.cursorOffset);
+    const inserted = `${openWrap}${filledSnippet}${closeWrap}`;
+    const nextText = text.slice(0, start) + inserted + text.slice(end);
+
+    // For `\frac{sel}{}` move caret into the denominator `{}` slot; otherwise place after insertion.
+    const nextEmptyBraces = filledSnippet.indexOf(
+      "{}",
+      entry.cursorOffset + selected.length
+    );
+    const cursorPos =
+      nextEmptyBraces !== -1
+        ? start + openWrap.length + nextEmptyBraces + 1
+        : start + inserted.length;
+
+    return { text: nextText, cursorPos, inserted };
+  }
+
+  return applyFormulaInsertion(text, {
+    entry,
+    score: 100,
+    replaceStart: start,
+    replaceEnd: end,
+    mode: "explicit",
+    insideMath,
+  });
+}
+

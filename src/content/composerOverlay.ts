@@ -9,8 +9,13 @@ import {
 } from "../core/composerPreview.js";
 import {
   applyFormulaInsertion,
+  CATALOG_CATEGORIES,
   extractAutocompleteContext,
+  filterCatalogEntries,
+  insertCatalogEntryAtSelection,
   searchFormulaCatalog,
+  type FormulaCategory,
+  type FormulaEntry,
   type FormulaMatch,
 } from "../core/formulaCatalog.js";
 import {
@@ -24,7 +29,7 @@ import {
   QUICK_SYMBOLS,
   type QuickSymbol,
 } from "../core/symbolBar.js";
-import { getMessages, type Locale } from "../i18n/messages.js";
+import { getMessages, type Locale, type Messages } from "../i18n/messages.js";
 import { renderFormulaToElement } from "../renderer/katexRenderer.js";
 import {
   exportPreviewBodyToPng,
@@ -34,6 +39,7 @@ import {
 export const COMPOSER_SELECTOR =
   'textarea:not([disabled]):not([readonly]), [role="textbox"][contenteditable="true"], [role="textbox"][contenteditable="plaintext-only"], [contenteditable="true"][aria-multiline="true"]';
 export const PREVIEW_PANEL_ATTR = "data-latex-on-x-preview";
+export const LAUNCHER_BTN_ATTR = "data-latex-on-x-launcher";
 
 type PopoverHTMLElement = HTMLElement & {
   showPopover?: () => void;
@@ -200,6 +206,20 @@ export function writeComposerValue(
   }
 }
 
+function isInsideOverlay(target: EventTarget | null): boolean {
+  const el =
+    target instanceof Element
+      ? target
+      : target instanceof Node
+        ? target.parentElement
+        : null;
+  if (!el) return false;
+  return Boolean(
+    el.closest(`[${PREVIEW_PANEL_ATTR}="true"]`) ||
+      el.closest(`[${LAUNCHER_BTN_ATTR}="true"]`)
+  );
+}
+
 function findComposerElement(target: EventTarget | null): HTMLElement | null {
   const el =
     target instanceof Element
@@ -208,9 +228,26 @@ function findComposerElement(target: EventTarget | null): HTMLElement | null {
         ? target.parentElement
         : null;
   if (!el) return null;
-  if (el.closest(`[${PREVIEW_PANEL_ATTR}="true"]`)) return null;
+  if (isInsideOverlay(el)) return null;
   const match = el.closest(COMPOSER_SELECTOR);
   return match instanceof HTMLElement ? match : null;
+}
+
+function getCategoryLabel(category: FormulaCategory, msg: Messages): string {
+  switch (category) {
+    case "command":
+      return msg.catBasics;
+    case "calculus":
+      return msg.catCalculus;
+    case "algebra":
+      return msg.catAlgebra;
+    case "physics":
+      return msg.catPhysics;
+    case "probability":
+      return msg.catProbability;
+    case "chemistry":
+      return msg.catChemistry;
+  }
 }
 
 function supportsPopover(el: HTMLElement): el is PopoverHTMLElement {
@@ -328,11 +365,39 @@ export function createComposerPreviewController(
   let activeComposer: HTMLElement | null = null;
   let dismissedForText: string | null = null;
   let panelEl: HTMLElement | null = null;
+  let launcherEl: HTMLButtonElement | null = null;
   let debouncer: Debouncer | null = null;
   let activeSuggestions: FormulaMatch[] = [];
   let activePlainMaths: PlainMathSuggestion[] = [];
   let selectedSuggestionIdx = 0;
   let lastSuggestionSignature = "";
+  let catalogOpen = false;
+  let catalogCategory: FormulaCategory = "command";
+  let catalogQuery = "";
+  let selectedCatalogIdx = 0;
+  let activeCatalogEntries: FormulaEntry[] = [];
+  let catalogSearchInputEl: HTMLInputElement | null = null;
+  let lastSelection: { start: number; end: number } = { start: 0, end: 0 };
+
+  const captureComposerSelection = (): void => {
+    if (!activeComposer || !activeComposer.isConnected) return;
+    const text = readComposerText(activeComposer);
+    lastSelection = readComposerSelection(activeComposer, text);
+  };
+
+  const resolveActiveSelection = (
+    text: string
+  ): { start: number; end: number } => {
+    if (
+      activeComposer instanceof HTMLTextAreaElement ||
+      activeComposer instanceof HTMLInputElement
+    ) {
+      return readComposerSelection(activeComposer, text);
+    }
+    const start = Math.max(0, Math.min(lastSelection.start, text.length));
+    const end = Math.max(start, Math.min(lastSelection.end, text.length));
+    return { start, end };
+  };
 
   const clearSuggestions = (): void => {
     activeSuggestions = [];
@@ -345,7 +410,9 @@ export function createComposerPreviewController(
     if (!panelEl) return;
     const locale: Locale = getOptions().locale ?? "en";
     const insertLabel = getMessages(locale).suggestionInsertBtn;
-    const buttons = panelEl.querySelectorAll(".latex-on-x-suggestion-item");
+    const buttons = panelEl.querySelectorAll(
+      ".latex-on-x-suggestions .latex-on-x-suggestion-item"
+    );
     buttons.forEach((btn, idx) => {
       const selected = idx === selectedSuggestionIdx;
       btn.classList.toggle("is-selected", selected);
@@ -357,32 +424,141 @@ export function createComposerPreviewController(
     });
   };
 
-  const hidePopoverSafely = (panel: HTMLElement): void => {
-    if (!supportsPopover(panel)) return;
+  const syncSelectedCatalogClass = (
+    resultsEl: HTMLElement,
+    insertLabel: string
+  ): void => {
+    const buttons = resultsEl.querySelectorAll(".latex-on-x-suggestion-item");
+    buttons.forEach((btn, idx) => {
+      const selected = idx === selectedCatalogIdx;
+      btn.classList.toggle("is-selected", selected);
+      btn.setAttribute("aria-selected", selected ? "true" : "false");
+      const actionEl = btn.querySelector(".latex-on-x-suggestion-action");
+      if (actionEl) {
+        actionEl.textContent = selected ? "Enter" : insertLabel;
+      }
+    });
+  };
+
+  const hidePopoverSafely = (el: HTMLElement): void => {
+    if (!supportsPopover(el)) return;
     try {
-      if (panel.matches(":popover-open")) {
-        panel.hidePopover?.();
+      if (el.matches(":popover-open")) {
+        el.hidePopover?.();
       }
     } catch {
       // Ignore if already closed or unsupported in the current runtime
     }
   };
 
-  const showPanel = (panel: HTMLElement): void => {
-    panel.style.display = "block";
-    panel.setAttribute("aria-hidden", "false");
-    if (supportsPopover(panel)) {
-      try {
-        if (!panel.matches(":popover-open")) {
-          panel.showPopover?.();
-        }
-      } catch {
-        // Fall back gracefully to fixed z-index positioning
+  const showPopoverSafely = (el: HTMLElement): void => {
+    if (!supportsPopover(el)) return;
+    try {
+      if (!el.matches(":popover-open")) {
+        el.showPopover?.();
       }
+    } catch {
+      // Fall back gracefully to fixed z-index positioning
     }
   };
 
+  const hideLauncher = (): void => {
+    if (launcherEl) {
+      hidePopoverSafely(launcherEl);
+      launcherEl.style.display = "none";
+      launcherEl.setAttribute("aria-hidden", "true");
+    }
+  };
+
+  const destroyLauncher = (): void => {
+    if (launcherEl) {
+      hidePopoverSafely(launcherEl);
+      launcherEl.remove();
+      launcherEl = null;
+    }
+  };
+
+  const positionLauncher = (
+    btn: HTMLButtonElement,
+    composer: HTMLElement
+  ): void => {
+    if (typeof window === "undefined") return;
+    const rect = composer.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
+
+    const btnWidth = btn.offsetWidth || 34;
+    const btnHeight = btn.offsetHeight || 26;
+    const left = Math.max(
+      12,
+      Math.min(rect.right - btnWidth - 6, window.innerWidth - btnWidth - 12)
+    );
+    const top = Math.max(
+      12,
+      Math.min(rect.bottom - btnHeight - 6, window.innerHeight - btnHeight - 12)
+    );
+
+    btn.style.left = `${Math.round(left)}px`;
+    btn.style.top = `${Math.round(top)}px`;
+  };
+
+  const ensureLauncher = (composer: HTMLElement | null): HTMLButtonElement => {
+    const host = resolvePanelHost(doc, composer);
+    if (launcherEl && launcherEl.isConnected) {
+      if (launcherEl.parentElement !== host) {
+        hidePopoverSafely(launcherEl);
+        host.appendChild(launcherEl);
+      }
+      return launcherEl;
+    }
+
+    const btn = doc.createElement("button");
+    btn.type = "button";
+    btn.className = "latex-on-x-launcher";
+    btn.setAttribute(LAUNCHER_BTN_ATTR, "true");
+    btn.textContent = "∑";
+    if (supportsPopover(btn)) {
+      btn.setAttribute("popover", "manual");
+    }
+    btn.style.display = "none";
+
+    btn.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+    });
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openCatalog(true);
+    });
+
+    host.appendChild(btn);
+    launcherEl = btn;
+    return btn;
+  };
+
+  const showLauncherForComposer = (
+    composer: HTMLElement,
+    theme: "light" | "dim" | "dark",
+    locale: Locale
+  ): void => {
+    const msg = getMessages(locale);
+    const btn = ensureLauncher(composer);
+    btn.setAttribute("data-theme", theme);
+    btn.setAttribute("title", msg.launcherTooltip);
+    btn.setAttribute("aria-label", msg.launcherTooltip);
+    btn.style.display = "inline-flex";
+    btn.setAttribute("aria-hidden", "false");
+    showPopoverSafely(btn);
+    positionLauncher(btn, composer);
+  };
+
+  const showPanel = (panel: HTMLElement): void => {
+    hideLauncher();
+    panel.style.display = "block";
+    panel.setAttribute("aria-hidden", "false");
+    showPopoverSafely(panel);
+  };
+
   const hidePanel = (): void => {
+    catalogSearchInputEl = null;
     if (panelEl) {
       hidePopoverSafely(panelEl);
       panelEl.style.display = "none";
@@ -391,6 +567,7 @@ export function createComposerPreviewController(
   };
 
   const destroyPanel = (): void => {
+    catalogSearchInputEl = null;
     if (panelEl) {
       hidePopoverSafely(panelEl);
       panelEl.remove();
@@ -418,8 +595,16 @@ export function createComposerPreviewController(
     }
     panel.style.display = "none";
 
-    // Prevent clicking inside the preview panel from stealing focus from the composer
+    // Prevent clicking buttons inside the preview panel from stealing focus from the composer,
+    // while still allowing the catalog search input to receive focus normally.
     panel.addEventListener("mousedown", (event) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest(".latex-on-x-catalog-search")
+      ) {
+        return;
+      }
       event.preventDefault();
     });
 
@@ -455,39 +640,76 @@ export function createComposerPreviewController(
     panel.style.top = `${Math.round(top)}px`;
   };
 
+  const openCatalog = (focusSearch: boolean): void => {
+    if (!running || !activeComposer || !activeComposer.isConnected) return;
+    captureComposerSelection();
+    dismissedForText = null;
+    catalogOpen = true;
+    renderPreviewNow();
+    if (focusSearch && catalogSearchInputEl) {
+      catalogSearchInputEl.focus();
+    }
+  };
+
+  const closeCatalog = (restoreComposerFocus: boolean): void => {
+    catalogOpen = false;
+    catalogQuery = "";
+    activeCatalogEntries = [];
+    selectedCatalogIdx = 0;
+    if (restoreComposerFocus && activeComposer && activeComposer.isConnected) {
+      activeComposer.focus?.();
+    }
+    renderPreviewNow();
+  };
+
   const renderPreviewNow = (): void => {
     if (!running || !activeComposer || !activeComposer.isConnected) {
       clearSuggestions();
+      catalogOpen = false;
       hidePanel();
+      hideLauncher();
       return;
     }
-
-    const text = readComposerText(activeComposer);
-    if (dismissedForText !== null && text === dismissedForText) {
-      clearSuggestions();
-      hidePanel();
-      return;
-    }
-    dismissedForText = null;
 
     const opts = getOptions();
     const locale: Locale = opts.locale ?? "en";
     const enableChemistry = opts.enableChemistry ?? true;
     const msg = getMessages(locale);
+    const currentTheme = detectPageTheme(doc);
+
+    if (!enableChemistry && catalogCategory === "chemistry") {
+      catalogCategory = "command";
+    }
+
+    const text = readComposerText(activeComposer);
+    if (dismissedForText !== null && text === dismissedForText && !catalogOpen) {
+      clearSuggestions();
+      hidePanel();
+      showLauncherForComposer(activeComposer, currentTheme, locale);
+      return;
+    }
+    dismissedForText = null;
 
     const analysis = analyzeComposerDraft(text, { enableChemistry });
 
     const cursorPos = readComposerCursor(activeComposer, text);
     const acCtx = extractAutocompleteContext(text, cursorPos);
-    const suggestions = acCtx ? searchFormulaCatalog(acCtx, locale, 5) : [];
+    const suggestions =
+      !catalogOpen && acCtx ? searchFormulaCatalog(acCtx, locale, 5) : [];
 
     const plainMaths =
       suggestions.length === 0 ? detectPlainMathExpressions(text) : [];
     const hasPlainMaths = plainMaths.length > 0;
 
-    if (!analysis.shouldShowPreview && suggestions.length === 0 && !hasPlainMaths) {
+    if (
+      !analysis.shouldShowPreview &&
+      suggestions.length === 0 &&
+      !hasPlainMaths &&
+      !catalogOpen
+    ) {
       clearSuggestions();
       hidePanel();
+      showLauncherForComposer(activeComposer, currentTheme, locale);
       return;
     }
 
@@ -504,7 +726,6 @@ export function createComposerPreviewController(
     activePlainMaths = plainMaths;
 
     const panel = ensurePanel(activeComposer);
-    const currentTheme = detectPageTheme(doc);
     panel.setAttribute("data-theme", currentTheme);
     panel.textContent = "";
 
@@ -626,9 +847,13 @@ export function createComposerPreviewController(
       }
 
       if (!analysis.shouldShowPreview && renderedFormulaCount === 0) {
-        clearSuggestions();
-        hidePanel();
-        return;
+        hasPreviewBody = false;
+        if (!catalogOpen) {
+          clearSuggestions();
+          hidePanel();
+          showLauncherForComposer(activeComposer, currentTheme, locale);
+          return;
+        }
       }
     }
 
@@ -643,9 +868,10 @@ export function createComposerPreviewController(
 
     const titleEl = doc.createElement("span");
     titleEl.className = "latex-on-x-preview-title";
-    titleEl.textContent =
-      analysis.shouldShowPreview || hasPlainMaths
-        ? `∑ ${msg.previewTitle}`
+    titleEl.textContent = hasPreviewBody
+      ? `∑ ${msg.previewTitle}`
+      : catalogOpen
+        ? `∑ ${msg.catalogTitle}`
         : `∑ ${msg.suggestionsTitle}`;
     titleGroup.appendChild(titleEl);
 
@@ -665,12 +891,12 @@ export function createComposerPreviewController(
             : `✓ ${msg.previewReadyPlural.replace("{n}", String(analysis.formulaCount))}`;
       }
       titleGroup.appendChild(badgeEl);
-    } else if (hasPlainMaths) {
+    } else if (hasPlainMaths && hasPreviewBody) {
       const badgeEl = doc.createElement("span");
       badgeEl.className = "latex-on-x-preview-badge is-plain";
       badgeEl.textContent = msg.plainMathBadge;
       titleGroup.appendChild(badgeEl);
-    } else {
+    } else if (!catalogOpen) {
       const hintEl = doc.createElement("span");
       hintEl.className = "latex-on-x-preview-hint";
       hintEl.textContent = msg.suggestionsHint;
@@ -680,7 +906,7 @@ export function createComposerPreviewController(
     const actionsGroup = doc.createElement("div");
     actionsGroup.className = "latex-on-x-preview-actions";
 
-    if (hasPlainMaths) {
+    if (hasPlainMaths && hasPreviewBody) {
       const convertBtn = doc.createElement("button");
       convertBtn.type = "button";
       convertBtn.className = "latex-on-x-preview-convert";
@@ -734,6 +960,30 @@ export function createComposerPreviewController(
       actionsGroup.appendChild(exportBtn);
     }
 
+    if (hasPreviewBody) {
+      const catalogToggleBtn = doc.createElement("button");
+      catalogToggleBtn.type = "button";
+      catalogToggleBtn.className = catalogOpen
+        ? "latex-on-x-preview-catalog-toggle is-active"
+        : "latex-on-x-preview-catalog-toggle";
+      catalogToggleBtn.setAttribute("aria-label", msg.catalogToggleTooltip);
+      catalogToggleBtn.setAttribute("title", msg.catalogToggleTooltip);
+      catalogToggleBtn.setAttribute(
+        "aria-expanded",
+        catalogOpen ? "true" : "false"
+      );
+      catalogToggleBtn.textContent = msg.catalogToggleBtn;
+      catalogToggleBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (catalogOpen) {
+          closeCatalog(true);
+        } else {
+          openCatalog(true);
+        }
+      });
+      actionsGroup.appendChild(catalogToggleBtn);
+    }
+
     const closeBtn = doc.createElement("button");
     closeBtn.type = "button";
     closeBtn.className = "latex-on-x-preview-close";
@@ -742,9 +992,22 @@ export function createComposerPreviewController(
     closeBtn.textContent = "×";
     closeBtn.addEventListener("click", (event) => {
       event.stopPropagation();
-      dismissedForText = text;
+      const hadPreview = hasPreviewBody;
+      const wasCatalogOpen = catalogOpen;
+      catalogOpen = false;
+      catalogQuery = "";
+      activeCatalogEntries = [];
+      if (hadPreview) {
+        dismissedForText = text;
+      }
       clearSuggestions();
       hidePanel();
+      if (activeComposer && activeComposer.isConnected) {
+        if (wasCatalogOpen && doc.activeElement !== activeComposer) {
+          activeComposer.focus?.();
+        }
+        showLauncherForComposer(activeComposer, currentTheme, locale);
+      }
     });
 
     actionsGroup.appendChild(closeBtn);
@@ -806,6 +1069,212 @@ export function createComposerPreviewController(
       }
 
       panel.appendChild(tipsEl);
+    }
+
+    // Formula Explorer & Search Palette (v1.4)
+    catalogSearchInputEl = null;
+    if (catalogOpen) {
+      const catalogEl = doc.createElement("div");
+      catalogEl.className = hasPreviewBody
+        ? "latex-on-x-catalog"
+        : "latex-on-x-catalog is-standalone";
+
+      const controlsEl = doc.createElement("div");
+      controlsEl.className = "latex-on-x-catalog-controls";
+
+      const searchInput = doc.createElement("input");
+      searchInput.type = "search";
+      searchInput.className = "latex-on-x-catalog-search";
+      searchInput.placeholder = msg.catalogSearchPlaceholder;
+      searchInput.setAttribute("aria-label", msg.catalogSearchPlaceholder);
+      searchInput.autocomplete = "off";
+      searchInput.spellcheck = false;
+      searchInput.value = catalogQuery;
+      catalogSearchInputEl = searchInput;
+
+      const tabsEl = doc.createElement("div");
+      tabsEl.className = "latex-on-x-catalog-tabs";
+      tabsEl.setAttribute("role", "tablist");
+
+      const resultsEl = doc.createElement("ul");
+      resultsEl.className = "latex-on-x-catalog-results";
+      resultsEl.setAttribute("role", "listbox");
+
+      const syncCatalogTabs = (): void => {
+        const isSearching = catalogQuery.trim().length > 0;
+        const tabButtons = tabsEl.querySelectorAll(".latex-on-x-catalog-tab");
+        tabButtons.forEach((tabBtn) => {
+          const cat = tabBtn.getAttribute("data-category");
+          const active = !isSearching && cat === catalogCategory;
+          tabBtn.classList.toggle("is-active", active);
+          tabBtn.setAttribute("aria-selected", active ? "true" : "false");
+        });
+      };
+
+      const populateCatalogResults = (): void => {
+        const entries = filterCatalogEntries({
+          query: catalogQuery,
+          category: catalogCategory,
+          locale,
+          enableChemistry,
+        });
+        activeCatalogEntries = entries;
+        selectedCatalogIdx = 0;
+        resultsEl.textContent = "";
+
+        if (entries.length === 0) {
+          const emptyLi = doc.createElement("li");
+          emptyLi.className = "latex-on-x-catalog-empty";
+          emptyLi.textContent = msg.catalogEmpty;
+          resultsEl.appendChild(emptyLi);
+          return;
+        }
+
+        entries.forEach((entry, idx) => {
+          const li = doc.createElement("li");
+          const itemBtn = doc.createElement("button");
+          itemBtn.type = "button";
+          itemBtn.className =
+            idx === selectedCatalogIdx
+              ? "latex-on-x-suggestion-item is-selected"
+              : "latex-on-x-suggestion-item";
+          itemBtn.setAttribute("role", "option");
+          itemBtn.setAttribute("data-entry-id", entry.id);
+          itemBtn.setAttribute(
+            "aria-selected",
+            idx === selectedCatalogIdx ? "true" : "false"
+          );
+
+          const mainGroup = doc.createElement("div");
+          mainGroup.className = "latex-on-x-suggestion-main";
+
+          const formulaSpan = doc.createElement("span");
+          formulaSpan.className = "latex-on-x-suggestion-formula";
+          const previewRes = renderFormulaToElement(
+            entry.previewLatex,
+            entry.previewMode,
+            formulaSpan,
+            { enableChemistry }
+          );
+          if (!previewRes.ok) {
+            formulaSpan.textContent = entry.snippet;
+          }
+
+          const metaGroup = doc.createElement("div");
+          metaGroup.className = "latex-on-x-suggestion-meta";
+
+          const labelEl = doc.createElement("span");
+          labelEl.className = "latex-on-x-suggestion-label";
+          labelEl.textContent = entry.labels[locale];
+          metaGroup.appendChild(labelEl);
+
+          if (entry.category === "command") {
+            const codeEl = doc.createElement("span");
+            codeEl.className = "latex-on-x-suggestion-code";
+            codeEl.textContent = entry.snippet.trim();
+            metaGroup.appendChild(codeEl);
+          }
+
+          mainGroup.appendChild(formulaSpan);
+          mainGroup.appendChild(metaGroup);
+
+          const actionEl = doc.createElement("span");
+          actionEl.className = "latex-on-x-suggestion-action";
+          actionEl.textContent =
+            idx === selectedCatalogIdx ? "Enter" : msg.suggestionInsertBtn;
+
+          itemBtn.appendChild(mainGroup);
+          itemBtn.appendChild(actionEl);
+
+          itemBtn.addEventListener("mouseenter", () => {
+            selectedCatalogIdx = idx;
+            syncSelectedCatalogClass(resultsEl, msg.suggestionInsertBtn);
+          });
+
+          itemBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            acceptCatalogEntry(idx);
+          });
+
+          li.appendChild(itemBtn);
+          resultsEl.appendChild(li);
+        });
+      };
+
+      for (const cat of CATALOG_CATEGORIES) {
+        if (cat === "chemistry" && !enableChemistry) {
+          continue;
+        }
+        const tabBtn = doc.createElement("button");
+        tabBtn.type = "button";
+        tabBtn.className = "latex-on-x-catalog-tab";
+        tabBtn.setAttribute("role", "tab");
+        tabBtn.setAttribute("data-category", cat);
+        tabBtn.textContent = getCategoryLabel(cat, msg);
+        tabBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          catalogCategory = cat;
+          catalogQuery = "";
+          searchInput.value = "";
+          syncCatalogTabs();
+          populateCatalogResults();
+          if (activeComposer && activeComposer.isConnected) {
+            positionPanel(panel, activeComposer);
+          }
+        });
+        tabsEl.appendChild(tabBtn);
+      }
+
+      searchInput.addEventListener("input", () => {
+        catalogQuery = searchInput.value;
+        syncCatalogTabs();
+        populateCatalogResults();
+        if (activeComposer && activeComposer.isConnected) {
+          positionPanel(panel, activeComposer);
+        }
+      });
+
+      searchInput.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowDown" && activeCatalogEntries.length > 0) {
+          event.preventDefault();
+          event.stopPropagation();
+          selectedCatalogIdx =
+            (selectedCatalogIdx + 1) % activeCatalogEntries.length;
+          syncSelectedCatalogClass(resultsEl, msg.suggestionInsertBtn);
+        } else if (event.key === "ArrowUp" && activeCatalogEntries.length > 0) {
+          event.preventDefault();
+          event.stopPropagation();
+          selectedCatalogIdx =
+            (selectedCatalogIdx - 1 + activeCatalogEntries.length) %
+            activeCatalogEntries.length;
+          syncSelectedCatalogClass(resultsEl, msg.suggestionInsertBtn);
+        } else if (
+          (event.key === "Enter" ||
+            (event.key === "Tab" &&
+              !event.shiftKey &&
+              !event.ctrlKey &&
+              !event.altKey &&
+              !event.metaKey)) &&
+          activeCatalogEntries.length > 0
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          acceptCatalogEntry(selectedCatalogIdx);
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          closeCatalog(true);
+        }
+      });
+
+      controlsEl.appendChild(searchInput);
+      controlsEl.appendChild(tabsEl);
+      catalogEl.appendChild(controlsEl);
+      catalogEl.appendChild(resultsEl);
+      panel.appendChild(catalogEl);
+
+      syncCatalogTabs();
+      populateCatalogResults();
     }
 
     // Smart formula autocomplete suggestions list (v1.1)
@@ -888,8 +1357,8 @@ export function createComposerPreviewController(
       panel.appendChild(listEl);
     }
 
-    // Compact Quick Symbol Bar (v1.3)
-    if (hasPreviewBody && suggestions.length === 0) {
+    // Compact Quick Symbol Bar (v1.3 + always available inside Formula Explorer in v1.4)
+    if ((hasPreviewBody || catalogOpen) && suggestions.length === 0) {
       const barEl = doc.createElement("div");
       barEl.className = "latex-on-x-symbol-bar";
       barEl.setAttribute("role", "toolbar");
@@ -934,6 +1403,33 @@ export function createComposerPreviewController(
     clearSuggestions();
     debouncer?.cancel();
     writeComposerValue(activeComposer, nextText, cursorPos, inserted);
+    lastSelection = { start: cursorPos, end: cursorPos };
+    renderPreviewNow();
+  };
+
+  const acceptCatalogEntry = (index: number): void => {
+    if (!activeComposer || !activeComposer.isConnected) return;
+    const entry = activeCatalogEntries[index];
+    if (!entry) return;
+
+    const currentText = readComposerText(activeComposer);
+    const { start, end } = resolveActiveSelection(currentText);
+    const { text: nextText, cursorPos, inserted } = insertCatalogEntryAtSelection(
+      currentText,
+      start,
+      end,
+      entry
+    );
+
+    catalogOpen = false;
+    catalogQuery = "";
+    activeCatalogEntries = [];
+    selectedCatalogIdx = 0;
+    clearSuggestions();
+    debouncer?.cancel();
+    activeComposer.focus?.();
+    writeComposerValue(activeComposer, nextText, cursorPos, inserted);
+    lastSelection = { start: cursorPos, end: cursorPos };
     renderPreviewNow();
   };
 
@@ -957,6 +1453,7 @@ export function createComposerPreviewController(
     clearSuggestions();
     debouncer?.cancel();
     writeComposerValue(activeComposer, nextText, cursorPos, lastWrapped);
+    lastSelection = { start: cursorPos, end: cursorPos };
     renderPreviewNow();
   };
 
@@ -981,13 +1478,14 @@ export function createComposerPreviewController(
       cursorPos,
       hint.inlineReplacement
     );
+    lastSelection = { start: cursorPos, end: cursorPos };
     renderPreviewNow();
   };
 
   const insertQuickSymbol = (symbol: QuickSymbol): void => {
     if (!activeComposer || !activeComposer.isConnected) return;
     const currentText = readComposerText(activeComposer);
-    const { start, end } = readComposerSelection(activeComposer, currentText);
+    const { start, end } = resolveActiveSelection(currentText);
     const { text: nextText, cursorPos, inserted } = applyQuickSymbol(
       currentText,
       start,
@@ -995,9 +1493,18 @@ export function createComposerPreviewController(
       symbol
     );
 
+    const wasCatalogOpen = catalogOpen;
+    catalogOpen = false;
+    catalogQuery = "";
+    activeCatalogEntries = [];
+    selectedCatalogIdx = 0;
     clearSuggestions();
     debouncer?.cancel();
+    if (wasCatalogOpen) {
+      activeComposer.focus?.();
+    }
     writeComposerValue(activeComposer, nextText, cursorPos, inserted);
+    lastSelection = { start: cursorPos, end: cursorPos };
     renderPreviewNow();
   };
 
@@ -1012,27 +1519,42 @@ export function createComposerPreviewController(
   const onFocusIn = (event: FocusEvent): void => {
     const composer = findComposerElement(event.target);
     if (!composer) return;
+    if (activeComposer !== composer) {
+      catalogOpen = false;
+      catalogQuery = "";
+      dismissedForText = null;
+    }
     activeComposer = composer;
-    dismissedForText = null;
+    captureComposerSelection();
     renderPreviewNow();
   };
 
   const onFocusOut = (event: FocusEvent): void => {
     const composer = findComposerElement(event.target);
-    if (!composer || composer !== activeComposer) return;
+    const leftComposer = composer !== null && composer === activeComposer;
+    const leftOverlay = isInsideOverlay(event.target);
+    if (!leftComposer && !leftOverlay) return;
 
     const nextTarget = event.relatedTarget;
+    if (isInsideOverlay(nextTarget)) {
+      return;
+    }
     if (
-      nextTarget instanceof Element &&
-      nextTarget.closest(`[${PREVIEW_PANEL_ATTR}="true"]`)
+      activeComposer &&
+      nextTarget instanceof Node &&
+      activeComposer.contains(nextTarget)
     ) {
       return;
     }
 
     debouncer?.cancel();
     activeComposer = null;
+    catalogOpen = false;
+    catalogQuery = "";
+    activeCatalogEntries = [];
     clearSuggestions();
     hidePanel();
+    hideLauncher();
   };
 
   const onKeyDown = (event: KeyboardEvent): void => {
@@ -1045,12 +1567,19 @@ export function createComposerPreviewController(
       return;
     }
 
+    const composer = findComposerElement(event.target);
+    if (!composer || composer !== activeComposer) return;
+
+    if (catalogOpen && event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeCatalog(false);
+      return;
+    }
+
     const hasSuggestions = activeSuggestions.length > 0;
     const hasPlainMath = activePlainMaths.length > 0;
     if (!hasSuggestions && !hasPlainMath) return;
-
-    const composer = findComposerElement(event.target);
-    if (!composer || composer !== activeComposer) return;
 
     if (hasSuggestions && event.key === "ArrowDown") {
       event.preventDefault();
@@ -1085,6 +1614,11 @@ export function createComposerPreviewController(
       dismissedForText = readComposerText(activeComposer);
       clearSuggestions();
       hidePanel();
+      showLauncherForComposer(
+        activeComposer,
+        detectPageTheme(doc),
+        getOptions().locale ?? "en"
+      );
     }
   };
 
@@ -1103,17 +1637,17 @@ export function createComposerPreviewController(
     const composer = findComposerElement(event.target);
     if (!composer) return;
     activeComposer = composer;
+    captureComposerSelection();
     scheduleUpdate();
   };
 
   const onViewportChange = (): void => {
-    if (
-      panelEl &&
-      panelEl.style.display !== "none" &&
-      activeComposer &&
-      activeComposer.isConnected
-    ) {
+    if (!activeComposer || !activeComposer.isConnected) return;
+    if (panelEl && panelEl.style.display !== "none") {
       positionPanel(panelEl, activeComposer);
+    }
+    if (launcherEl && launcherEl.style.display !== "none") {
+      positionLauncher(launcherEl, activeComposer);
     }
   };
 
@@ -1133,10 +1667,11 @@ export function createComposerPreviewController(
       window.addEventListener("resize", onViewportChange);
       window.addEventListener("scroll", onViewportChange, true);
 
-      // If a composer is already focused when enabled, show preview immediately
+      // If a composer is already focused when enabled, show preview or launcher immediately
       const currentFocus = findComposerElement(doc.activeElement);
       if (currentFocus) {
         activeComposer = currentFocus;
+        captureComposerSelection();
         renderPreviewNow();
       }
     },
@@ -1148,6 +1683,10 @@ export function createComposerPreviewController(
       debouncer = null;
       activeComposer = null;
       dismissedForText = null;
+      catalogOpen = false;
+      catalogQuery = "";
+      activeCatalogEntries = [];
+      selectedCatalogIdx = 0;
       clearSuggestions();
 
       doc.removeEventListener("focusin", onFocusIn, true);
@@ -1163,6 +1702,7 @@ export function createComposerPreviewController(
       window.removeEventListener("scroll", onViewportChange, true);
 
       destroyPanel();
+      destroyLauncher();
     },
 
     isRunning(): boolean {
