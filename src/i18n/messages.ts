@@ -36,6 +36,12 @@ export interface Messages {
   diagUnbalancedBraces: string;
   diagForbiddenCommand: string;
   diagFormulaPrefix: string;
+  exportPngBtn: string;
+  exportPngTooltip: string;
+  exportPngBusy: string;
+  exportPngCopied: string;
+  exportPngSaved: string;
+  exportPngError: string;
   languageLabel: string;
 }
 
@@ -74,6 +80,12 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     diagUnbalancedBraces: "Unbalanced braces.",
     diagForbiddenCommand: "Disallowed command: {cmd}.",
     diagFormulaPrefix: "Formula #{n}:",
+    exportPngBtn: "PNG",
+    exportPngTooltip: "Copy 3x PNG image to clipboard",
+    exportPngBusy: "Exporting...",
+    exportPngCopied: "PNG copied ✓",
+    exportPngSaved: "PNG saved ✓",
+    exportPngError: "Export failed",
     languageLabel: "Language",
   },
   es: {
@@ -110,6 +122,12 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     diagUnbalancedBraces: "Llaves desbalanceadas.",
     diagForbiddenCommand: "Comando no permitido: {cmd}.",
     diagFormulaPrefix: "Fórmula #{n}:",
+    exportPngBtn: "PNG",
+    exportPngTooltip: "Copiar imagen PNG 3x al portapapeles",
+    exportPngBusy: "Exportando...",
+    exportPngCopied: "PNG copiado ✓",
+    exportPngSaved: "PNG guardado ✓",
+    exportPngError: "Error al exportar",
     languageLabel: "Idioma",
   },
   zh: {
@@ -146,6 +164,12 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     diagUnbalancedBraces: "大括号不匹配。",
     diagForbiddenCommand: "不允许使用的命令：{cmd}。",
     diagFormulaPrefix: "公式 #{n}：",
+    exportPngBtn: "PNG",
+    exportPngTooltip: "复制 3x 高清 PNG 图片到剪贴板",
+    exportPngBusy: "导出中...",
+    exportPngCopied: "已复制 PNG ✓",
+    exportPngSaved: "已保存 PNG ✓",
+    exportPngError: "导出失败",
     languageLabel: "语言",
   },
 };

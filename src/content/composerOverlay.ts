@@ -4,8 +4,13 @@ import {
   type ComposerDiagnostic,
   type Debouncer,
 } from "../core/composerPreview.js";
+import type { ExportTheme } from "../core/pngExporter.js";
 import { getMessages, type Locale } from "../i18n/messages.js";
 import { renderFormulaToElement } from "../renderer/katexRenderer.js";
+import {
+  exportPreviewBodyToPng,
+  type ExportPngResult,
+} from "./formulaImageExport.js";
 
 export const COMPOSER_SELECTOR =
   'textarea:not([disabled]):not([readonly]), [role="textbox"][contenteditable="true"], [role="textbox"][contenteditable="plaintext-only"], [contenteditable="true"][aria-multiline="true"]';
@@ -20,6 +25,11 @@ export interface ComposerPreviewOptions {
   locale?: Locale;
   enableChemistry?: boolean;
   debounceMs?: number;
+  exportPng?: (
+    bodyEl: HTMLElement,
+    theme: ExportTheme,
+    doc: Document
+  ) => Promise<ExportPngResult>;
 }
 
 export interface ComposerPreviewController {
@@ -299,7 +309,8 @@ export function createComposerPreviewController(
     }
 
     const panel = ensurePanel(activeComposer);
-    panel.setAttribute("data-theme", detectPageTheme(doc));
+    const currentTheme = detectPageTheme(doc);
+    panel.setAttribute("data-theme", currentTheme);
     panel.textContent = "";
 
     // Build preview content first so we also capture any KaTeX syntax errors
@@ -323,6 +334,7 @@ export function createComposerPreviewController(
     }
 
     let formulaIdx = 0;
+    let renderedFormulaCount = 0;
     for (const seg of analysis.segments) {
       if (seg.type === "text") {
         bodyEl.appendChild(doc.createTextNode(seg.content));
@@ -354,6 +366,7 @@ export function createComposerPreviewController(
             message: result.message,
           });
         } else {
+          renderedFormulaCount += 1;
           wrapper.className =
             seg.mode === "display"
               ? "latex-on-x-formula latex-on-x-display"
@@ -396,6 +409,46 @@ export function createComposerPreviewController(
 
     const actionsGroup = doc.createElement("div");
     actionsGroup.className = "latex-on-x-preview-actions";
+
+    if (renderedFormulaCount > 0) {
+      const exportBtn = doc.createElement("button");
+      exportBtn.type = "button";
+      exportBtn.className = "latex-on-x-preview-export";
+      exportBtn.setAttribute("aria-label", msg.exportPngTooltip);
+      exportBtn.setAttribute("title", msg.exportPngTooltip);
+      exportBtn.textContent = msg.exportPngBtn;
+
+      exportBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (exportBtn.disabled) return;
+
+        exportBtn.disabled = true;
+        exportBtn.classList.remove("is-success", "is-error");
+        exportBtn.textContent = msg.exportPngBusy;
+
+        const exporter = opts.exportPng ?? exportPreviewBodyToPng;
+        void exporter(bodyEl, currentTheme, doc).then((res) => {
+          if (!exportBtn.isConnected) return;
+          if (res.ok) {
+            exportBtn.classList.add("is-success");
+            exportBtn.textContent =
+              res.method === "copied" ? msg.exportPngCopied : msg.exportPngSaved;
+          } else {
+            exportBtn.classList.add("is-error");
+            exportBtn.textContent = msg.exportPngError;
+          }
+
+          setTimeout(() => {
+            if (!exportBtn.isConnected) return;
+            exportBtn.disabled = false;
+            exportBtn.classList.remove("is-success", "is-error");
+            exportBtn.textContent = msg.exportPngBtn;
+          }, 1800);
+        });
+      });
+
+      actionsGroup.appendChild(exportBtn);
+    }
 
     const closeBtn = doc.createElement("button");
     closeBtn.type = "button";

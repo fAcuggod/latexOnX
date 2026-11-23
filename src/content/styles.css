@@ -185,6 +185,43 @@
   gap: 6px;
 }
 
+.latex-on-x-preview-export {
+  border: 1px solid rgba(29, 155, 240, 0.42);
+  background-color: rgba(29, 155, 240, 0.1);
+  color: #1d9bf0;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 9px;
+  border-radius: 9999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.latex-on-x-preview-export:hover:not(:disabled) {
+  background-color: rgba(29, 155, 240, 0.2);
+  border-color: rgba(29, 155, 240, 0.78);
+}
+
+.latex-on-x-preview-export:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.latex-on-x-preview-export.is-success {
+  border-color: rgba(0, 186, 124, 0.5);
+  background-color: rgba(0, 186, 124, 0.16);
+  color: #00ba7c;
+}
+
+.latex-on-x-preview-export.is-error {
+  border-color: rgba(244, 33, 46, 0.5);
+  background-color: rgba(244, 33, 46, 0.14);
+  color: #f4212e;
+}
+
 .latex-on-x-preview-close {
   border: none;
   background: transparent;

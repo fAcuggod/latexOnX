@@ -1,6 +1,6 @@
 {
   "name": "latex-on-x",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Chromium browser extension to render LaTeX math formulas on X (x.com) in real time using KaTeX.",
   "private": true,
   "type": "module",

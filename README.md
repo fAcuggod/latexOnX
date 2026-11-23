@@ -30,6 +30,7 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 
 - **Collision-free delimiters:** supports `\(...\)` inline and `$$...$$` / `\[...\]` display blocks, leaving single-dollar currency notation and cashtags completely untouched.
 - **Live composer preview & diagnostics:** floating, debounced KaTeX preview directly below X's post/reply composer, highlighting unclosed delimiters, unbalanced braces, disallowed macros, and syntax errors *before* posting.
+- **One-click 3x HiDPI PNG export:** click `PNG` in the live preview header to copy a crisp 3x formula card matching X's Light, Dim, or Lights Out theme directly to your clipboard (paste into X with `Ctrl+V`, with automatic `.png` download fallback).
 - **Chemistry & physical units (`mhchem`):** natively renders chemical formulas, ionic charges, reaction arrows, and physical units (`\ce{...}`, `\pu{...}`), toggleable from the popup.
 - **Opt-in undelimited LaTeX button:** detects posts containing unambiguous raw LaTeX/chemistry commands (ignoring code escapes and Windows paths) and offers a discrete `∑ Render LaTeX` / `↺ Show raw` toggle right below the post.
 - **Built for X's modern frontend:** targets resilient HTML5 semantic landmarks (`<article>` / `[role="article"]`) and builds DOM trees directly via `katex.render()` with **zero `.innerHTML`**, complying with X's strict *Trusted Types* CSP.
@@ -99,21 +100,23 @@ latexOnX/
 │   │   ├── parser.ts          # Lossless linear delimiter scanner
 │   │   ├── validator.ts       # Anti-DoS validator (length, brace depth, disallowed macros)
 │   │   ├── detector.ts        # High-precision bare-LaTeX & chemistry detector/segmenter
-│   │   └── composerPreview.ts # Draft analyzer, unclosed delimiter detector & debouncer
+│   │   ├── composerPreview.ts # Draft analyzer, unclosed delimiter detector & debouncer
+│   │   └── pngExporter.ts     # 3x HiDPI export geometry, CSS font rewriter & SVG builder
 │   ├── renderer/
 │   │   └── katexRenderer.ts # Trusted-Types-safe KaTeX + mhchem pipeline (HTML + MathML)
 │   ├── content/         # Browser layer (Chrome Manifest V3)
-│   │   ├── domProcessor.ts    # Safe TreeWalker, opt-in button bar, restore & copy
-│   │   ├── composerOverlay.ts # Floating Trusted-Types-safe live composer preview portal
-│   │   ├── observer.ts        # rAF-batched MutationObserver for SPA/infinite scroll
-│   │   ├── index.ts           # Entry point synced with chrome.storage.sync
-│   │   └── styles.css         # Light/Dim/Dark adaptive styles, preview & copy toast
+│   │   ├── domProcessor.ts       # Safe TreeWalker, opt-in button bar, restore & copy
+│   │   ├── composerOverlay.ts    # Floating Trusted-Types-safe live composer preview portal
+│   │   ├── formulaImageExport.ts # Base64 font embedder, SVG-to-Canvas PNG & clipboard export
+│   │   ├── observer.ts           # rAF-batched MutationObserver for SPA/infinite scroll
+│   │   ├── index.ts              # Entry point synced with chrome.storage.sync
+│   │   └── styles.css            # Light/Dim/Dark adaptive styles, preview & copy toast
 │   ├── i18n/            # English, Spanish & Simplified Chinese UI strings
 │   ├── popup/           # Minimal On/Off, feature toggles & language switcher popup
 │   └── demo/            # Live local KaTeX + mhchem sandbox
 ├── public/              # manifest.json (MV3), icons & Chrome _locales
 ├── scripts/build.mjs    # Transparent esbuild bundler + .woff2 font optimizer
-├── tests/               # 82 automated unit & DOM tests (Vitest + happy-dom)
+├── tests/               # 95 automated unit & DOM tests (Vitest + happy-dom)
 └── docs/                # Architecture & TypeScript reference guides
 ```
 
@@ -125,7 +128,7 @@ Read the full technical breakdown in [docs/architecture.md](docs/architecture.md
 
 ```bash
 npm run typecheck   # Strict TypeScript type checking (tsc --noEmit)
-npm test            # Run all 82 unit & DOM tests (Vitest + happy-dom)
+npm test            # Run all 95 unit & DOM tests (Vitest + happy-dom)
 npm run test:watch  # Watch mode for TDD
 npm run build       # Build Chrome MV3 extension into dist/
 npm run build:demo  # Build local KaTeX sandbox into dist-demo/
@@ -139,7 +142,7 @@ npm run check       # Run typecheck + tests + extension build
 - [x] **v0.1 (Core & MV3 Extension):** lossless delimiter scanner, anti-DoS validator, Trusted-Types-safe KaTeX renderer, `<article>` DOM observer, click-to-copy, and EN/ES/ZH i18n.
 - [x] **v0.2 (Chemistry & Opt-In Bare LaTeX):** `mhchem` (`\ce`, `\pu`) support and discrete `∑ Render LaTeX` / `↺ Show raw` button for undelimited posts.
 - [x] **v0.3 (Live Composer Preview):** real-time debounced KaTeX preview and validator diagnostics inside the X post composer.
-- [ ] **v0.4 (3x HiDPI PNG Export):** one-click copy of crisp formula images for sharing with non-extension users.
+- [x] **v0.4 (3x HiDPI PNG Export):** one-click copy of crisp formula images for sharing with non-extension users.
 - [ ] **v1.0 (Rust/WASM Core):** port `src/core/` to Rust/WebAssembly with TypeScript vs. WASM benchmarks.
 
 ---

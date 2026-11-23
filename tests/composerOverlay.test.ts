@@ -233,5 +233,61 @@ describe("composerOverlay (Milestone B.2)", () => {
 
     controller.stop();
   });
+
+  it("shows the 1-click PNG export button only when valid formulas render and displays localized feedback", async () => {
+    vi.useFakeTimers();
+
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+
+    const exportPngMock = vi.fn(async () => ({
+      ok: true as const,
+      method: "copied" as const,
+    }));
+
+    const controller = createComposerPreviewController(document, () => ({
+      locale: "es",
+      enableChemistry: true,
+      debounceMs: 50,
+      exportPng: exportPngMock,
+    }));
+    controller.start();
+
+    // Unclosed delimiter with 0 valid rendered formulas -> no PNG button
+    textarea.value = "$$\\frac{1}{2}";
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    const panel = document.querySelector(
+      `[${PREVIEW_PANEL_ATTR}="true"]`
+    ) as HTMLElement;
+    expect(panel.querySelector(".latex-on-x-preview-export")).toBeNull();
+
+    // Complete formula -> PNG button appears and triggers exporter on click
+    textarea.value = "$$\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}$$";
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    vi.advanceTimersByTime(60);
+
+    const exportBtn = panel.querySelector(
+      ".latex-on-x-preview-export"
+    ) as HTMLButtonElement;
+    expect(exportBtn).not.toBeNull();
+    expect(exportBtn.textContent).toBe("PNG");
+
+    exportBtn.click();
+    expect(exportPngMock).toHaveBeenCalledTimes(1);
+
+    // Flush microtasks from async exporter promise
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(exportBtn.textContent).toBe("PNG copiado ✓");
+    expect(exportBtn.classList.contains("is-success")).toBe(true);
+
+    // Resets back to default label after feedback timeout
+    vi.advanceTimersByTime(1900);
+    expect(exportBtn.disabled).toBe(false);
+    expect(exportBtn.textContent).toBe("PNG");
+
+    controller.stop();
+  });
 });
+
 

@@ -30,6 +30,7 @@
 
 - **无冲突定界符：** 支持行内 `\(...\)` 以及块级 `$$...$$` / `\[...\]`，完全不干扰货币价格与金融标签。
 - **发帖实时预览与诊断：** 在 X 发帖/回复框下方浮动显示防抖（debounced）KaTeX 实时预览，并在发布前即时提示未闭合定界符、花括号不匹配及语法错误。
+- **一键导出 3x 高清 PNG：** 点击预览栏中的 `PNG` 按钮即可复制匹配 X 当前主题的高清公式卡片到剪贴板（在发帖框按 `Ctrl+V` 直接附带图片，不支持时自动下载 `.png`）。
 - **化学公式与物理单位（`mhchem`）：** 原生支持化学式、离子电荷、反应箭头与物理单位（`\ce{...}`、`\pu{...}`），可在弹窗中随时开关。
 - **无定界符 LaTeX 按需渲染按钮：** 精准识别未写定界符的 LaTeX/化学公式帖子（自动忽略代码转义与 Windows 路径），并在帖子下方显示简洁的 `∑ 渲染 LaTeX` / `↺ 显示原文` 按钮。
 - **适配 X 现代前端：** 基于稳定的 HTML5 语义化标签（`<article>` / `[role="article"]`），通过 `katex.render()` 直接构建 DOM 节点（**零 `.innerHTML`**），全面兼容 X 严格的 *Trusted Types* CSP 安全策略。
@@ -91,7 +92,7 @@ npm run build:demo
 
 ```bash
 npm run typecheck   # 严格 TypeScript 类型检查（tsc --noEmit）
-npm test            # 运行全部 82 个单元测试与 DOM 测试（Vitest + happy-dom）
+npm test            # 运行全部 95 个单元测试与 DOM 测试（Vitest + happy-dom）
 npm run test:watch  # TDD 监听模式
 npm run build       # 构建 Chrome MV3 扩展至 dist/
 npm run build:demo  # 构建本地 KaTeX 沙盒至 dist-demo/

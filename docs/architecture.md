@@ -67,3 +67,8 @@ Because `src/core/` has no DOM or browser API dependencies, it is fast to test, 
    - **Debounced updates:** `createDebouncer(120, ...)` throttles rapid keystrokes so KaTeX re-renders once per typing pause rather than on every character.
    - **Floating Top Layer portal:** anchored to X's native `<textarea>` composers (and legacy `[role="textbox"][contenteditable]` editors) via `getBoundingClientRect()` (auto-flipping above when near the bottom edge), lifted into the browser Top Layer via `popover="manual"` (and hosted inside native `<dialog>` modals when active) with capture-phase listeners so X's React handlers cannot block updates, and rendered without `.innerHTML` (Trusted Types compliant).
    - **Automatic theme matching:** inspects `getComputedStyle(document.body / document.documentElement).backgroundColor` luminance to match X's Light, Dim, or Lights Out surface.
+
+9. **3x HiDPI PNG Formula Export (`src/core/pngExporter.ts` & `src/content/formulaImageExport.ts`):**
+   - **Pure geometry & SVG builder:** `computeExportGeometry` enforces minimum card dimensions and proportional anti-OOM clamping (`maxPixelDimension = 4096`), `rewriteCssFontUrls` embeds Base64 `.woff2` font URIs in a single linear pass, and `buildFormulaSvgDocument` builds a CDATA-escaped SVG `<foreignObject>` scaled cleanly at 3x via `width`/`height` + `viewBox`.
+   - **Trusted-Types-safe rasterization:** clones preview nodes without `.innerHTML`, strips hidden `.katex-mathml` from the offscreen clone, rasterizes via `data:image/svg+xml` onto `<canvas>`, and copies `image/png` to the clipboard (preserving user activation via `ClipboardItem` promise support, with automatic `.png` download fallback).
+
