@@ -1,16 +1,19 @@
 {
   "name": "latex-on-x",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "description": "Chromium browser extension to render LaTeX math formulas on X (x.com) in real time using KaTeX.",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:rust": "cargo test --manifest-path crates/latex-core/Cargo.toml",
     "typecheck": "tsc --noEmit",
     "build": "node scripts/build.mjs",
     "build:demo": "node scripts/build.mjs --demo",
+    "build:wasm": "node scripts/build-wasm.mjs",
     "build:all": "node scripts/build.mjs --all",
+    "bench": "node scripts/benchmark.mjs",
     "check": "npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {

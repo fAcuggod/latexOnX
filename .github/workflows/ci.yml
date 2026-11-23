@@ -23,10 +23,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Setup Rust wasm32 target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Run Rust core tests
+        run: npm run test:rust
+
+      - name: Build Rust/WASM core
+        run: npm run build:wasm
+
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Run unit and DOM tests
+      - name: Run unit, DOM, and WASM equivalence tests
         run: npm test
 
       - name: Build Chrome extension and demo

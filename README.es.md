@@ -35,6 +35,7 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 - **Botón opt-in para LaTeX sin delimitadores:** detecta publicaciones con comandos LaTeX/químicos inequívocos (ignorando escapes de código y rutas Windows) y muestra un botón discreto `∑ Renderizar LaTeX` / `↺ Ver original`.
 - **Diseñada para el frontend actual de X:** utiliza etiquetas semánticas estándar (`<article>` / `[role="article"]`) y construye nodos DOM directamente con `katex.render()` (**cero `.innerHTML`**), 100% compatible con la política *Trusted Types* de X.
 - **Scroll infinito a 60-120 FPS:** *fast-path* `O(n)` sin asignaciones de memoria que descarta publicaciones sin fórmulas al instante, junto con un `MutationObserver` agrupado en `requestAnimationFrame`.
+- **Núcleo en Rust/WebAssembly sin dependencias:** parser y validador anti-DoS portados a Rust *zero-copy* (`crates/latex-core/`), compilados a un binario `.wasm` de **37.5 KB** y validados con tests de equivalencia diferencial contra TypeScript.
 - **Seguridad por diseño:** validador previo que impone límites de longitud, profundidad de llaves y bloquea comandos peligrosos (`\def`, `\let`, `\newcommand`, `\href`, `\htmlStyle`, etc.) antes de ejecutar KaTeX; el texto plano siempre se inserta como `TextNode` (anti-XSS).
 - **Accesible y adaptable:** genera HTML + MathML nativo para lectores de pantalla y se integra con los temas **Claro**, **Noche clara (Dim)** y **Oscuro (Lights Out)** de X.
 - **Clic para copiar y On/Off instantáneo:** hacé clic (o presioná Enter/Espacio) en cualquier fórmula para copiar su LaTeX original; activá o pausá funciones desde el popup sin recargar la pestaña.
@@ -58,7 +59,7 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 
 ## Instalación (Chrome / Brave / Edge / Arc)
 
-> Requiere [Node.js 18+](https://nodejs.org/).
+> Requiere [Node.js 18+](https://nodejs.org/). (Opcional: [Rust](https://rustup.rs/) con el target `wasm32-unknown-unknown` si querés recompilar el núcleo WASM desde cero.)
 
 1. **Cloná e instalá dependencias:**
    ```bash
@@ -88,18 +89,32 @@ Abrí `dist-demo/index.html` en tu navegador para probar fórmulas en los 3 tema
 
 ---
 
+## Benchmarks (TypeScript vs. Rust/WASM)
+
+Medidos con `npm run bench` sobre **10.000 publicaciones mixtas de X** (8.000 fórmulas válidas, texto plano, precios y *cashtags*, química, Unicode y payloads DoS) en Node v24.22.2:
+
+| Implementación | Mediana (10k posts) | Rendimiento | Mejora vs. TS |
+| :--- | ---: | ---: | ---: |
+| **TypeScript (V8 JIT)** | 20.56 ms | 486,369 posts/s | 1.00x |
+| **Rust/WASM (FFI por post, 10k llamadas)** | 12.45 ms | 803,227 posts/s | **1.65x** |
+| **Rust/WASM (lote en memoria lineal, 1 llamada)** | 2.56 ms | 3,898,838 posts/s | **8.02x** |
+
+---
+
 ## Scripts de desarrollo
 
 ```bash
 npm run typecheck   # Verifica tipos estrictos con TypeScript (tsc --noEmit)
-npm test            # Ejecuta los 95 tests unitarios y de DOM (Vitest + happy-dom)
-npm run test:watch  # Modo watch para TDD
+npm test            # Ejecuta los 98 tests unitarios, de DOM y equivalencia WASM
+npm run test:rust   # Ejecuta los 21 tests nativos en Rust (cargo test)
+npm run build:wasm  # Recompila crates/latex-core -> src/wasm/latex_core.wasm
+npm run bench       # Corre el benchmark TypeScript vs. Rust/WASM (10.000 posts)
 npm run build       # Compila la extensión Chrome MV3 en dist/
 npm run build:demo  # Compila el sandbox local en dist-demo/
 npm run check       # Ejecuta typecheck + tests + build completo
 ```
 
-Más detalles técnicos en [docs/architecture.md](docs/architecture.md).
+Más detalles técnicos en [docs/architecture.md](docs/architecture.md) y [docs/rust-wasm-guide.md](docs/rust-wasm-guide.md).
 
 ---
 

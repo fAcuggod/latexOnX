@@ -35,6 +35,7 @@
 - **无定界符 LaTeX 按需渲染按钮：** 精准识别未写定界符的 LaTeX/化学公式帖子（自动忽略代码转义与 Windows 路径），并在帖子下方显示简洁的 `∑ 渲染 LaTeX` / `↺ 显示原文` 按钮。
 - **适配 X 现代前端：** 基于稳定的 HTML5 语义化标签（`<article>` / `[role="article"]`），通过 `katex.render()` 直接构建 DOM 节点（**零 `.innerHTML`**），全面兼容 X 严格的 *Trusted Types* CSP 安全策略。
 - **60-120 FPS 无限滚动：** `O(n)` 零分配快速路径即时跳过不含公式的帖子，并结合 `requestAnimationFrame` 批量调度 `MutationObserver`。
+- **零依赖 Rust/WASM 核心：** 将解析器与防 DoS 校验器移植为零拷贝 Rust（`crates/latex-core/`），编译为仅 **37.5 KB** 的 `.wasm` 模块并通过与 TypeScript 的差分等价测试。
 - **纵深防御安全模型：** 渲染前校验最大长度、花括号嵌套深度，并拦截危险宏与 HTML 命令（`\def`、`\let`、`\newcommand`、`\href`、`\htmlStyle` 等）；纯文本始终以 `TextNode` 写入，杜绝 XSS。
 - **无障碍与主题自适应：** 同时生成 HTML 与原生 MathML，自动适配 X 的**浅色**、**暗蓝（Dim）**与**纯黑（Lights Out）**主题。
 - **点击复制与即时开关：** 点击（或按 Enter/Space）任意公式即可复制 LaTeX 源码；在弹窗中随时切换总开关、化学支持或无定界符按钮，无需刷新页面。
@@ -58,7 +59,7 @@
 
 ## 安装指南（Chrome / Brave / Edge / Arc）
 
-> 需要 [Node.js 18+](https://nodejs.org/)。
+> 需要 [Node.js 18+](https://nodejs.org/)。（可选：如需从源码重新编译 WASM 核心，请安装 [Rust](https://rustup.rs/) 与 `wasm32-unknown-unknown` 目标。）
 
 1. **克隆仓库并安装依赖：**
    ```bash
@@ -88,18 +89,32 @@ npm run build:demo
 
 ---
 
+## 性能基准测试（TypeScript vs. Rust/WASM）
+
+在 Node v24.22.2 上通过 `npm run bench` 对 **10,000 条混合 X 帖子**（含 8,000 个有效公式、纯文本、价格/金融标签、化学式、Unicode 与 DoS 样本）进行测试：
+
+| 实现方式 | 中位耗时（10k 帖子） | 吞吐量 | 相对 TS 加速比 |
+| :--- | ---: | ---: | ---: |
+| **TypeScript（V8 JIT）** | 20.56 ms | 486,369 posts/s | 1.00x |
+| **Rust/WASM（逐条 FFI，10k 次调用）** | 12.45 ms | 803,227 posts/s | **1.65x** |
+| **Rust/WASM（线性内存批处理，单次调用）** | 2.56 ms | 3,898,838 posts/s | **8.02x** |
+
+---
+
 ## 开发命令
 
 ```bash
 npm run typecheck   # 严格 TypeScript 类型检查（tsc --noEmit）
-npm test            # 运行全部 95 个单元测试与 DOM 测试（Vitest + happy-dom）
-npm run test:watch  # TDD 监听模式
+npm test            # 运行全部 98 个单元测试、DOM 测试与 WASM 等价测试
+npm run test:rust   # 运行全部 21 个原生 Rust 单元测试（cargo test）
+npm run build:wasm  # 重新编译 crates/latex-core -> src/wasm/latex_core.wasm
+npm run bench       # 运行 10,000 条帖子的 TypeScript vs. Rust/WASM 基准测试
 npm run build       # 构建 Chrome MV3 扩展至 dist/
 npm run build:demo  # 构建本地 KaTeX 沙盒至 dist-demo/
 npm run check       # 一键运行类型检查 + 测试 + 扩展构建
 ```
 
-完整架构解析请参阅 [docs/architecture.md](docs/architecture.md)。
+完整架构解析请参阅 [docs/architecture.md](docs/architecture.md) 与 [docs/rust-wasm-guide.md](docs/rust-wasm-guide.md)。
 
 ---
 

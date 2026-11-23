@@ -72,3 +72,8 @@ Because `src/core/` has no DOM or browser API dependencies, it is fast to test, 
    - **Pure geometry & SVG builder:** `computeExportGeometry` enforces minimum card dimensions and proportional anti-OOM clamping (`maxPixelDimension = 4096`), `rewriteCssFontUrls` embeds Base64 `.woff2` font URIs in a single linear pass, and `buildFormulaSvgDocument` builds a CDATA-escaped SVG `<foreignObject>` scaled cleanly at 3x via `width`/`height` + `viewBox`.
    - **Trusted-Types-safe rasterization:** clones preview nodes without `.innerHTML`, strips hidden `.katex-mathml` from the offscreen clone, rasterizes via `data:image/svg+xml` onto `<canvas>`, and copies `image/png` to the clipboard (preserving user activation via `ClipboardItem` promise support, with automatic `.png` download fallback).
 
+10. **Zero-Dependency Rust/WebAssembly Core (`crates/latex-core/` & `src/wasm/`):**
+    - **Zero-copy Rust core:** mirrors `src/core/parser.ts` and `src/core/validator.ts` using borrowed `&'a str` slices, algebraic `enum` types, and a UTF-8-safe ASCII byte fast-path (`21` native `cargo test` cases).
+    - **Linear-memory WASM ABI:** compiles directly to `src/wasm/latex_core.wasm` (`37.5 KB`, zero external crates) using a flat `u32` offset table and reusable scratch buffer (`src/wasm/wasmCore.ts`), verified by differential equivalence tests (`tests/wasmCore.test.ts`) and benchmarked at up to **8.02x** throughput vs. V8 JIT TypeScript over 10,000 posts.
+
+

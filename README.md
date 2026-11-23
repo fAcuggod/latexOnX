@@ -12,6 +12,7 @@
       <img src="https://github.com/fAcuggod/latexOnX/actions/workflows/ci.yml/badge.svg" alt="CI" />
     </a>
     <img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white" alt="TypeScript Strict" />
+    <img src="https://img.shields.io/badge/Rust-WebAssembly-DEA584?logo=rust&logoColor=white" alt="Rust WebAssembly" />
     <img src="https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white" alt="Chrome Manifest V3" />
     <img src="https://img.shields.io/badge/Renderer-KaTeX-329894" alt="KaTeX" />
     <a href="LICENSE">
@@ -35,6 +36,7 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 - **Opt-in undelimited LaTeX button:** detects posts containing unambiguous raw LaTeX/chemistry commands (ignoring code escapes and Windows paths) and offers a discrete `∑ Render LaTeX` / `↺ Show raw` toggle right below the post.
 - **Built for X's modern frontend:** targets resilient HTML5 semantic landmarks (`<article>` / `[role="article"]`) and builds DOM trees directly via `katex.render()` with **zero `.innerHTML`**, complying with X's strict *Trusted Types* CSP.
 - **60-120 FPS infinite scrolling:** `O(n)` zero-allocation fast-path skips non-math posts immediately, paired with a `requestAnimationFrame`-batched `MutationObserver`.
+- **Zero-dependency Rust/WASM core:** pure parser and anti-DoS validator ported to zero-copy Rust (`crates/latex-core/`), compiled to a **37.5 KB** `.wasm` module and verified for differential equivalence against TypeScript.
 - **Defense-in-depth security:** pre-render validator enforces length caps, brace nesting depth, and blocks unsafe macros (`\def`, `\let`, `\newcommand`, `\href`, `\htmlStyle`, etc.) before KaTeX executes; plain text is always inserted as `TextNode` (XSS-safe).
 - **Accessible & theme-native:** outputs HTML + native MathML for screen readers and adapts automatically to X's **Light**, **Dim**, and **Lights Out** themes.
 - **Click-to-copy & instant On/Off:** click (or press Enter/Space on) any rendered formula to copy its LaTeX source; toggle rendering, chemistry, live preview, or the opt-in button live without reloading tabs.
@@ -58,7 +60,7 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 
 ## Installation (Chrome / Brave / Edge / Arc)
 
-> Requires [Node.js 18+](https://nodejs.org/).
+> Requires [Node.js 18+](https://nodejs.org/). (Optional: [Rust](https://rustup.rs/) with `wasm32-unknown-unknown` to rebuild the WASM core from source.)
 
 1. **Clone and install dependencies:**
    ```bash
@@ -94,14 +96,21 @@ Follows a **Functional Core, Imperative Shell** design:
 
 ```text
 latexOnX/
+├── crates/
+│   └── latex-core/      # Zero-dependency Rust core (parser + validator -> 37.5 KB WASM)
+│       ├── Cargo.toml
+│       └── src/               # types.rs, parser.rs, validator.rs, wasm.rs (21 cargo tests)
 ├── src/
-│   ├── core/            # 100% pure logic (zero browser/DOM dependencies)
+│   ├── core/            # 100% pure TypeScript logic (zero browser/DOM dependencies)
 │   │   ├── types.ts           # Discriminated union domain types
 │   │   ├── parser.ts          # Lossless linear delimiter scanner
 │   │   ├── validator.ts       # Anti-DoS validator (length, brace depth, disallowed macros)
 │   │   ├── detector.ts        # High-precision bare-LaTeX & chemistry detector/segmenter
 │   │   ├── composerPreview.ts # Draft analyzer, unclosed delimiter detector & debouncer
 │   │   └── pngExporter.ts     # 3x HiDPI export geometry, CSS font rewriter & SVG builder
+│   ├── wasm/            # Compiled WebAssembly module + linear-memory TypeScript bridge
+│   │   ├── latex_core.wasm    # 37.5 KB release wasm32 binary
+│   │   └── wasmCore.ts        # Reusable scratch-buffer linear memory wrapper
 │   ├── renderer/
 │   │   └── katexRenderer.ts # Trusted-Types-safe KaTeX + mhchem pipeline (HTML + MathML)
 │   ├── content/         # Browser layer (Chrome Manifest V3)
@@ -115,12 +124,24 @@ latexOnX/
 │   ├── popup/           # Minimal On/Off, feature toggles & language switcher popup
 │   └── demo/            # Live local KaTeX + mhchem sandbox
 ├── public/              # manifest.json (MV3), icons & Chrome _locales
-├── scripts/build.mjs    # Transparent esbuild bundler + .woff2 font optimizer
-├── tests/               # 95 automated unit & DOM tests (Vitest + happy-dom)
-└── docs/                # Architecture & TypeScript reference guides
+├── scripts/             # build.mjs, build-wasm.mjs & benchmark.mjs
+├── tests/               # 98 automated Vitest unit, DOM & WASM equivalence tests
+└── docs/                # Architecture, TypeScript & Rust/WASM guides
 ```
 
-Read the full technical breakdown in [docs/architecture.md](docs/architecture.md).
+Read the technical breakdowns in [docs/architecture.md](docs/architecture.md) and [docs/rust-wasm-guide.md](docs/rust-wasm-guide.md).
+
+---
+
+## Performance Benchmarks (TypeScript vs. Rust/WASM)
+
+Measured via `npm run bench` on **10,000 mixed X posts** (8,000 valid formulas, plus plain text, currency/cashtags, chemistry, Unicode, unclosed delimiters, and adversarial DoS payloads) on Node v24.22.2 (median of 9 measured runs after 3 warmups):
+
+| Implementation | Median (10k posts) | Throughput | Speedup vs. TS |
+| :--- | ---: | ---: | ---: |
+| **TypeScript (V8 JIT)** | 20.56 ms | 486,369 posts/s | 1.00x |
+| **Rust/WASM (per-post FFI, 10k calls)** | 12.45 ms | 803,227 posts/s | **1.65x** |
+| **Rust/WASM (batched linear memory, 1 call)** | 2.56 ms | 3,898,838 posts/s | **8.02x** |
 
 ---
 
@@ -128,8 +149,10 @@ Read the full technical breakdown in [docs/architecture.md](docs/architecture.md
 
 ```bash
 npm run typecheck   # Strict TypeScript type checking (tsc --noEmit)
-npm test            # Run all 95 unit & DOM tests (Vitest + happy-dom)
-npm run test:watch  # Watch mode for TDD
+npm test            # Run all 98 Vitest unit, DOM & WASM equivalence tests
+npm run test:rust   # Run all 21 native Rust unit tests (cargo test)
+npm run build:wasm  # Recompile crates/latex-core -> src/wasm/latex_core.wasm
+npm run bench       # Run TypeScript vs. Rust/WASM benchmark over 10,000 posts
 npm run build       # Build Chrome MV3 extension into dist/
 npm run build:demo  # Build local KaTeX sandbox into dist-demo/
 npm run check       # Run typecheck + tests + extension build
@@ -143,7 +166,7 @@ npm run check       # Run typecheck + tests + extension build
 - [x] **v0.2 (Chemistry & Opt-In Bare LaTeX):** `mhchem` (`\ce`, `\pu`) support and discrete `∑ Render LaTeX` / `↺ Show raw` button for undelimited posts.
 - [x] **v0.3 (Live Composer Preview):** real-time debounced KaTeX preview and validator diagnostics inside the X post composer.
 - [x] **v0.4 (3x HiDPI PNG Export):** one-click copy of crisp formula images for sharing with non-extension users.
-- [ ] **v1.0 (Rust/WASM Core):** port `src/core/` to Rust/WebAssembly with TypeScript vs. WASM benchmarks.
+- [x] **v1.0 (Rust/WASM Core):** zero-dependency Rust/WebAssembly parser and validator (`37.5 KB`), differential equivalence tests, and reproducible TypeScript vs. WASM benchmarks.
 
 ---
 
