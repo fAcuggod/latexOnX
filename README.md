@@ -65,6 +65,16 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 
 ## Installation (Chrome / Brave / Edge / Arc)
 
+### Option A: Prebuilt ZIP (No Node.js Required)
+
+1. Download `latex-on-x-v1.4.0.zip` from [GitHub Releases](https://github.com/fAcuggod/latexOnX/releases) and extract it to a folder.
+2. Open `chrome://extensions` (or `brave://extensions`, `edge://extensions`).
+3. Enable **Developer mode** (top-right).
+4. Click **Load unpacked** and select the extracted folder.
+5. Open [x.com](https://x.com) (or refresh an already-open tab).
+
+### Option B: Build from Source
+
 > Requires [Node.js 18+](https://nodejs.org/). (Optional: [Rust](https://rustup.rs/) with `wasm32-unknown-unknown` to rebuild the WASM core from source.)
 
 1. **Clone and install dependencies:**
@@ -132,7 +142,7 @@ latexOnX/
 │   ├── popup/           # Minimal On/Off, feature toggles & language switcher popup
 │   └── demo/            # Live local KaTeX + mhchem sandbox
 ├── public/              # manifest.json (MV3), icons & Chrome _locales
-├── scripts/             # build.mjs, build-wasm.mjs & benchmark.mjs
+├── scripts/             # build.mjs, package.mjs, build-wasm.mjs & benchmark.mjs
 ├── tests/               # 125 automated Vitest unit, DOM & WASM equivalence tests
 └── docs/                # Architecture, TypeScript & Rust/WASM guides
 ```
@@ -163,6 +173,7 @@ npm run build:wasm  # Recompile crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # Run TypeScript vs. Rust/WASM benchmark over 10,000 posts
 npm run build       # Build Chrome MV3 extension into dist/
 npm run build:demo  # Build local KaTeX sandbox into dist-demo/
+npm run package     # Package dist/ into release/latex-on-x-v<version>.zip
 npm run check       # Run typecheck + tests + extension build
 ```
 
@@ -182,6 +193,8 @@ npm run check       # Run typecheck + tests + extension build
 
 ---
 
-## License
+## Privacy & License
+
+LaTeX on X runs 100% locally in your browser and collects zero user data. See [PRIVACY.md](PRIVACY.md).
 
 Released under the [MIT License](LICENSE).

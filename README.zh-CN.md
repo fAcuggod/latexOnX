@@ -64,6 +64,16 @@
 
 ## 安装指南（Chrome / Brave / Edge / Arc）
 
+### 方式一：下载预编译 ZIP（无需 Node.js）
+
+1. 从 [GitHub Releases](https://github.com/fAcuggod/latexOnX/releases) 下载 `latex-on-x-v1.4.0.zip` 并解压到文件夹。
+2. 打开 `chrome://extensions`（或 `brave://extensions`、`edge://extensions`）。
+3. 开启右上角的 **开发者模式（Developer mode）**。
+4. 点击 **加载已解压的扩展程序（Load unpacked）** 并选择解压后的文件夹。
+5. 打开 [x.com](https://x.com)（如页面已打开，请刷新一次）。
+
+### 方式二：从源码构建
+
 > 需要 [Node.js 18+](https://nodejs.org/)。（可选：如需从源码重新编译 WASM 核心，请安装 [Rust](https://rustup.rs/) 与 `wasm32-unknown-unknown` 目标。）
 
 1. **克隆仓库并安装依赖：**
@@ -116,6 +126,7 @@ npm run build:wasm  # 重新编译 crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # 运行 10,000 条帖子的 TypeScript vs. Rust/WASM 基准测试
 npm run build       # 构建 Chrome MV3 扩展至 dist/
 npm run build:demo  # 构建本地 KaTeX 沙盒至 dist-demo/
+npm run package     # 将 dist/ 打包为 release/latex-on-x-v<version>.zip
 npm run check       # 一键运行类型检查 + 测试 + 扩展构建
 ```
 
@@ -123,6 +134,8 @@ npm run check       # 一键运行类型检查 + 测试 + 扩展构建
 
 ---
 
-## 开源协议
+## 隐私与开源协议
+
+LaTeX on X 完全在浏览器本地运行，不收集也不发送任何用户数据。详情见 [PRIVACY.md](PRIVACY.md)。
 
 基于 [MIT License](LICENSE) 开源。

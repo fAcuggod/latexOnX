@@ -64,6 +64,16 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 
 ## Instalación (Chrome / Brave / Edge / Arc)
 
+### Opción A: Descargar ZIP compilado (sin Node.js)
+
+1. Descargá `latex-on-x-v1.4.0.zip` desde [GitHub Releases](https://github.com/fAcuggod/latexOnX/releases) y descomprimilo en una carpeta.
+2. Abrí `chrome://extensions` (o `brave://extensions`, `edge://extensions`).
+3. Activá el **Modo de desarrollador**.
+4. Hacé clic en **Cargar descomprimida** y seleccioná la carpeta descomprimida.
+5. Abrí [x.com](https://x.com) (o recargá la pestaña si ya estaba abierta).
+
+### Opción B: Compilar desde el código fuente
+
 > Requiere [Node.js 18+](https://nodejs.org/). (Opcional: [Rust](https://rustup.rs/) con el target `wasm32-unknown-unknown` si querés recompilar el núcleo WASM desde cero.)
 
 1. **Cloná e instalá dependencias:**
@@ -116,6 +126,7 @@ npm run build:wasm  # Recompila crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # Corre el benchmark TypeScript vs. Rust/WASM (10.000 posts)
 npm run build       # Compila la extensión Chrome MV3 en dist/
 npm run build:demo  # Compila el sandbox local en dist-demo/
+npm run package     # Empaqueta dist/ en release/latex-on-x-v<version>.zip
 npm run check       # Ejecuta typecheck + tests + build completo
 ```
 
@@ -123,6 +134,8 @@ Más detalles técnicos en [docs/architecture.md](docs/architecture.md) y [docs/
 
 ---
 
-## Licencia
+## Privacidad y licencia
+
+LaTeX on X se ejecuta 100% local en tu navegador y no recopila ni transmite datos. Consultá [PRIVACY.md](PRIVACY.md).
 
 Distribuido bajo licencia [MIT](LICENSE).
