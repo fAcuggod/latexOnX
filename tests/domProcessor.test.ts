@@ -271,4 +271,153 @@ describe("domProcessor", () => {
     ).toBe(0);
     expect(document.querySelectorAll('[data-latex-on-x-bar="true"]')).toHaveLength(0);
   });
+
+  it("detects and renders Unicode/plain-math tweets on click and restores exact original text", () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    const rawText = [
+      "For the zeta function, analytic continuation to 0<Re(s)<1 is actually pretty easy.",
+      "ζ(s) = (1 − 1/2^s + 1/3^s − 1/4^s + ...) / (1 − 2^(1−s))",
+      "The alternating series converges for Re(s)>0, so this formula defines ζ(s) in the critical strip!",
+    ].join("\n");
+
+    document.body.innerHTML = `<main><article><div><span></span></div></article></main>`;
+    const article = document.querySelector("article")!;
+    article.querySelector("span")!.textContent = rawText;
+
+    // Default opt-in mode attaches button without auto-rendering
+    expect(
+      processAllTweets(document, {
+        locale: "en",
+        enableBareLatexButton: true,
+        autoRenderBareLatex: false,
+      })
+    ).toBe(0);
+    const btn = article.querySelector('[data-latex-on-x-bare-toggle]') as HTMLButtonElement;
+    expect(btn).not.toBeNull();
+    expect(btn.getAttribute("data-latex-on-x-bare-toggle")).toBe("render");
+
+    const uninstall = installCopyHandler(document);
+
+    // Click -> renders all 4 Unicode/plain-math expressions
+    btn.click();
+    const rendered = article.querySelectorAll('[data-latex-on-x="rendered"]');
+    expect(rendered).toHaveLength(4);
+    expect(rendered[1].classList.contains("latex-on-x-display")).toBe(true);
+    expect(rendered[1].getAttribute("data-latex")).toBe(
+      "\\zeta(s) = \\frac{1 - \\frac{1}{2^s} + \\frac{1}{3^s} - \\frac{1}{4^s} + \\cdots}{1 - 2^{1 - s}}"
+    );
+    expect(btn.getAttribute("data-latex-on-x-bare-toggle")).toBe("restore");
+
+    // Clicking the rendered Unicode formula copies compiled LaTeX
+    (rendered[1] as HTMLElement).click();
+    expect(writeText).toHaveBeenCalledWith(
+      "\\zeta(s) = \\frac{1 - \\frac{1}{2^s} + \\frac{1}{3^s} - \\frac{1}{4^s} + \\cdots}{1 - 2^{1 - s}}"
+    );
+
+    // Click Show raw -> restores exact original Unicode text
+    btn.click();
+    expect(article.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(0);
+    expect(article.querySelector("span")!.textContent).toBe(rawText);
+    expect(btn.getAttribute("data-latex-on-x-bare-toggle")).toBe("render");
+
+    uninstall();
+  });
+
+  it("auto-renders undelimited LaTeX and Unicode math when autoRenderBareLatex is enabled while keeping Show raw revert", () => {
+    const bareRaw = "\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}";
+    const unicodeRaw = "Euler: e^(iπ) + 1 = 0";
+
+    document.body.innerHTML = `
+      <main>
+        <article id="bare-post"><div><span></span></div></article>
+        <article id="unicode-post"><div><span></span></div></article>
+      </main>
+    `;
+    const barePost = document.getElementById("bare-post")!;
+    const unicodePost = document.getElementById("unicode-post")!;
+    barePost.querySelector("span")!.textContent = bareRaw;
+    unicodePost.querySelector("span")!.textContent = unicodeRaw;
+
+    const opts = {
+      locale: "es" as const,
+      enableBareLatexButton: true,
+      autoRenderBareLatex: true,
+    };
+
+    const count = processAllTweets(document, opts);
+    expect(count).toBe(2);
+
+    // Both posts rendered immediately and show the localized "Ver original" revert button
+    const bareBtn = barePost.querySelector('[data-latex-on-x-bare-toggle]') as HTMLButtonElement;
+    const unicodeBtn = unicodePost.querySelector('[data-latex-on-x-bare-toggle]') as HTMLButtonElement;
+    expect(bareBtn.getAttribute("data-latex-on-x-bare-toggle")).toBe("restore");
+    expect(bareBtn.textContent).toBe("↺ Ver original");
+    expect(bareBtn.classList.contains("is-active")).toBe(true);
+    expect(unicodeBtn.getAttribute("data-latex-on-x-bare-toggle")).toBe("restore");
+    expect(unicodeBtn.textContent).toBe("↺ Ver original");
+    expect(unicodePost.querySelector('[data-latex-on-x="rendered"]')?.getAttribute("data-latex")).toBe(
+      "e^{i\\pi} + 1 = 0"
+    );
+
+    const uninstall = installCopyHandler(document);
+
+    // User clicks "Ver original" on the Unicode post -> reverts to raw text
+    unicodeBtn.click();
+    expect(unicodePost.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(0);
+    expect(unicodePost.querySelector("span")!.textContent).toBe(unicodeRaw);
+    expect(unicodeBtn.getAttribute("data-latex-on-x-bare-toggle")).toBe("render");
+
+    // Subsequent MutationObserver / processTweetElement pass MUST NOT re-auto-render a manually reverted post
+    expect(processTweetElement(unicodePost, opts)).toBe(0);
+    expect(unicodePost.querySelectorAll('[data-latex-on-x="rendered"]')).toHaveLength(0);
+    expect(unicodePost.querySelector("span")!.textContent).toBe(unicodeRaw);
+
+    uninstall();
+  });
+
+  it("never assigns .innerHTML when auto-rendering Unicode/plain-math posts (Trusted Types safe)", () => {
+    const article = document.createElement("article");
+    const div = document.createElement("div");
+    const span = document.createElement("span");
+    span.textContent = "ζ(s) = (1 − 1/2^s + 1/3^s − 1/4^s + ...) / (1 − 2^(1−s))";
+    div.appendChild(span);
+    article.appendChild(div);
+    document.body.appendChild(article);
+
+    const innerHtmlDescriptor = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      "innerHTML"
+    );
+    const spySetter = vi.fn(() => {
+      throw new TypeError("TrustedHTML required");
+    });
+    Object.defineProperty(Element.prototype, "innerHTML", {
+      configurable: true,
+      get: innerHtmlDescriptor?.get,
+      set: spySetter,
+    });
+
+    try {
+      expect(
+        processTweetElement(article, {
+          enableBareLatexButton: true,
+          autoRenderBareLatex: true,
+        })
+      ).toBe(1);
+      expect(spySetter).not.toHaveBeenCalled();
+      expect(article.querySelector(".katex")).not.toBeNull();
+      expect(
+        article.querySelector('[data-latex-on-x-bare-toggle]')?.getAttribute("data-latex-on-x-bare-toggle")
+      ).toBe("restore");
+    } finally {
+      if (innerHtmlDescriptor) {
+        Object.defineProperty(Element.prototype, "innerHTML", innerHtmlDescriptor);
+      }
+    }
+  });
 });

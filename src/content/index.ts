@@ -17,12 +17,14 @@ import { createTimelineObserver } from "./observer.js";
 const STORAGE_KEY_ENABLED = "enabled";
 const STORAGE_KEY_CHEMISTRY = "enableChemistry";
 const STORAGE_KEY_BARE_BUTTON = "enableBareLatexButton";
+const STORAGE_KEY_AUTO_RENDER_BARE = "autoRenderBareLatex";
 const STORAGE_KEY_COMPOSER_PREVIEW = "enableComposerPreview";
 const STORAGE_KEY_LOCALE = "locale";
 
 let currentEnabled = true;
 let currentChemistry = true;
 let currentBareButton = true;
+let currentAutoRenderBare = false;
 let currentComposerPreview = true;
 let currentLocale: Locale = detectDefaultLocale();
 
@@ -31,6 +33,7 @@ function getProcessOptions(): ProcessOptions {
     locale: currentLocale,
     enableChemistry: currentChemistry,
     enableBareLatexButton: currentBareButton,
+    autoRenderBareLatex: currentAutoRenderBare,
   };
 }
 
@@ -83,8 +86,8 @@ function reprocessPage(): void {
 
 /**
  * Content script entry point on https://x.com and https://twitter.com.
- * Syncs On/Off state, chemistry support, bare-LaTeX opt-in button, live composer
- * preview, and UI language live from `chrome.storage.sync`.
+ * Syncs On/Off state, chemistry support, undelimited math detection/auto-render,
+ * live composer preview, and UI language live from `chrome.storage.sync`.
  */
 function bootstrap(): void {
   if (typeof chrome !== "undefined" && chrome.storage?.sync) {
@@ -93,6 +96,7 @@ function bootstrap(): void {
         [STORAGE_KEY_ENABLED]: true,
         [STORAGE_KEY_CHEMISTRY]: true,
         [STORAGE_KEY_BARE_BUTTON]: true,
+        [STORAGE_KEY_AUTO_RENDER_BARE]: false,
         [STORAGE_KEY_COMPOSER_PREVIEW]: true,
         [STORAGE_KEY_LOCALE]: null,
       },
@@ -100,6 +104,7 @@ function bootstrap(): void {
         currentEnabled = Boolean(items[STORAGE_KEY_ENABLED]);
         currentChemistry = Boolean(items[STORAGE_KEY_CHEMISTRY]);
         currentBareButton = Boolean(items[STORAGE_KEY_BARE_BUTTON]);
+        currentAutoRenderBare = Boolean(items[STORAGE_KEY_AUTO_RENDER_BARE]);
         currentComposerPreview = Boolean(items[STORAGE_KEY_COMPOSER_PREVIEW]);
         currentLocale = normalizeLocale(items[STORAGE_KEY_LOCALE]);
 
@@ -139,6 +144,17 @@ function bootstrap(): void {
           restoreAllMath(document, "bare");
           removeBareLatexBars(document);
         } else if (currentEnabled) {
+          processAllTweets(document, getProcessOptions());
+        }
+      }
+
+      if (STORAGE_KEY_AUTO_RENDER_BARE in changes) {
+        currentAutoRenderBare = Boolean(
+          changes[STORAGE_KEY_AUTO_RENDER_BARE].newValue
+        );
+        if (currentEnabled && currentBareButton) {
+          restoreAllMath(document, "bare");
+          removeBareLatexBars(document);
           processAllTweets(document, getProcessOptions());
         }
       }

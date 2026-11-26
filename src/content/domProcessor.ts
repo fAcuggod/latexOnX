@@ -1,6 +1,6 @@
 import {
-  hasBareLatex,
-  parseBareLatexSegments,
+  hasUndelimitedMath,
+  parseUndelimitedMathSegments,
 } from "../core/detector.js";
 import { parseMathSegments } from "../core/parser.js";
 import type { Segment } from "../core/types.js";
@@ -23,6 +23,7 @@ export interface ProcessOptions {
   locale?: Locale;
   enableChemistry?: boolean;
   enableBareLatexButton?: boolean;
+  autoRenderBareLatex?: boolean;
 }
 
 const SKIPPED_TAGS = new Set([
@@ -47,12 +48,14 @@ function normalizeOptions(
       locale: input,
       enableChemistry: true,
       enableBareLatexButton: true,
+      autoRenderBareLatex: false,
     };
   }
   return {
     locale: input?.locale ?? "en",
     enableChemistry: input?.enableChemistry ?? true,
     enableBareLatexButton: input?.enableBareLatexButton ?? true,
+    autoRenderBareLatex: input?.autoRenderBareLatex ?? false,
   };
 }
 
@@ -183,11 +186,12 @@ function replaceTextNodeWithSegments(
 function attachBareLatexButton(
   root: Element,
   anchorNode: Text,
-  locale: Locale
-): void {
+  locale: Locale,
+  initialState: "render" | "restore" = "render"
+): HTMLButtonElement | null {
   const doc = root.ownerDocument;
-  if (!doc) return;
-  if (root.querySelector(`[${BARE_BAR_ATTR}="true"]`)) return;
+  if (!doc) return null;
+  if (root.querySelector(`[${BARE_BAR_ATTR}="true"]`)) return null;
 
   const msg = getMessages(locale);
   const bar = doc.createElement("div");
@@ -196,23 +200,37 @@ function attachBareLatexButton(
 
   const btn = doc.createElement("button");
   btn.type = "button";
-  btn.className = "latex-on-x-bare-btn";
-  btn.setAttribute(BARE_BTN_ATTR, "render");
-  btn.setAttribute("title", msg.renderBareTooltip);
-  btn.textContent = msg.renderBareBtn;
+  btn.className =
+    initialState === "restore"
+      ? "latex-on-x-bare-btn is-active"
+      : "latex-on-x-bare-btn";
+  btn.setAttribute(BARE_BTN_ATTR, initialState);
+  btn.setAttribute(
+    "title",
+    initialState === "restore" ? msg.showRawTooltip : msg.renderBareTooltip
+  );
+  btn.textContent =
+    initialState === "restore" ? msg.showRawBtn : msg.renderBareBtn;
 
   bar.appendChild(btn);
 
   const anchorEl = anchorNode.parentElement;
-  if (anchorEl && anchorEl !== root && anchorEl.parentNode && root.contains(anchorEl.parentNode)) {
+  if (
+    anchorEl &&
+    anchorEl !== root &&
+    anchorEl.parentNode &&
+    root.contains(anchorEl.parentNode)
+  ) {
     anchorEl.parentNode.insertBefore(bar, anchorEl.nextSibling);
   } else {
     root.appendChild(bar);
   }
+
+  return btn;
 }
 
 /**
- * Renders undelimited LaTeX / chemistry expressions inside `root` on user opt-in click.
+ * Renders undelimited LaTeX, chemistry, and Unicode/plain-math expressions inside `root`.
  * Returns the number of newly rendered formulas.
  */
 export function renderBareLatexInElement(
@@ -220,16 +238,13 @@ export function renderBareLatexInElement(
   options?: Locale | ProcessOptions
 ): number {
   const opts = normalizeOptions(options);
-  const candidates = collectEligibleTextNodes(
-    root,
-    (value) =>
-      value.includes("\\") &&
-      hasBareLatex(value, { includeChemistry: opts.enableChemistry })
+  const candidates = collectEligibleTextNodes(root, (value) =>
+    hasUndelimitedMath(value, { includeChemistry: opts.enableChemistry })
   );
 
   let renderedCount = 0;
   for (const textNode of candidates) {
-    const segments = parseBareLatexSegments(textNode.nodeValue ?? "", {
+    const segments = parseUndelimitedMathSegments(textNode.nodeValue ?? "", {
       includeChemistry: opts.enableChemistry,
     });
     renderedCount += replaceTextNodeWithSegments(
@@ -246,8 +261,9 @@ export function renderBareLatexInElement(
 /**
  * Safely walks a post container, renders explicitly delimited formulas via `katex.render()`
  * inside a single `DocumentFragment` per text node (zero `.innerHTML`, fully compliant with
- * x.com's Trusted Types CSP), and optionally attaches a discrete opt-in button when
- * undelimited LaTeX/chemistry commands are detected.
+ * x.com's Trusted Types CSP), and either attaches a discrete opt-in button or auto-renders
+ * (with a `Show raw` revert toggle) when undelimited LaTeX, chemistry, or Unicode/plain math
+ * is detected.
  *
  * Idempotent: running multiple times on the same element never duplicates math or buttons.
  */
@@ -276,25 +292,30 @@ export function processTweetElement(
     );
   }
 
-  // 2. Opt-in discrete button when post has undelimited strong LaTeX/chemistry commands
+  // 2. Handle undelimited LaTeX, chemistry, and Unicode/plain-math posts
   if (
     opts.enableBareLatexButton &&
     renderedCount === 0 &&
     !root.querySelector(`[${RENDERED_ATTR}="rendered"]`) &&
     !root.querySelector(`[${BARE_BAR_ATTR}="true"]`)
   ) {
-    const bareCandidates = collectEligibleTextNodes(
-      root,
-      (value) =>
-        value.includes("\\") &&
-        hasBareLatex(value, { includeChemistry: opts.enableChemistry })
+    const bareCandidates = collectEligibleTextNodes(root, (value) =>
+      hasUndelimitedMath(value, { includeChemistry: opts.enableChemistry })
     );
     if (bareCandidates.length > 0) {
-      attachBareLatexButton(
-        root,
-        bareCandidates[bareCandidates.length - 1],
-        opts.locale
-      );
+      const anchor = bareCandidates[bareCandidates.length - 1];
+      if (opts.autoRenderBareLatex) {
+        // Attach the revert button before replacing text nodes so anchor stays in DOM
+        const btn = attachBareLatexButton(root, anchor, opts.locale, "restore");
+        const bareCount = renderBareLatexInElement(root, opts);
+        if (bareCount > 0) {
+          renderedCount += bareCount;
+        } else if (btn) {
+          btn.closest(`[${BARE_BAR_ATTR}="true"]`)?.remove();
+        }
+      } else {
+        attachBareLatexButton(root, anchor, opts.locale, "render");
+      }
     }
   }
 

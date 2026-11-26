@@ -1,4 +1,8 @@
 import { parseMathSegments } from "./parser.js";
+import {
+  detectPlainMathExpressions,
+  mightContainPlainMath,
+} from "./plainMathCompiler.js";
 import type { Segment } from "./types.js";
 
 /**
@@ -376,3 +380,125 @@ export function parseBareLatexSegments(
 
   return segments;
 }
+
+function hasExplicitDelimitedMath(text: string): boolean {
+  const segments = parseMathSegments(text);
+  for (const segment of segments) {
+    if (segment.type === "math") {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Returns `true` when `text` contains no explicit math delimiters, no Windows
+ * drive paths, and at least one high-precision Unicode or plain-math formula
+ * suitable for feed posts (e.g. `ζ(s) = (1 − 1/2^s + ...) / (1 − 2^(1−s))`,
+ * `0<Re(s)<1`, `e^(iπ) + 1 = 0`).
+ */
+export function hasPlainMath(text: string): boolean {
+  if (!mightContainPlainMath(text)) return false;
+  if (hasWindowsDrivePath(text)) return false;
+  if (hasExplicitDelimitedMath(text)) return false;
+
+  return detectPlainMathExpressions(text, { mode: "feed" }).length > 0;
+}
+
+function pushPlainMathSegments(text: string, segments: Segment[]): void {
+  const matches = detectPlainMathExpressions(text, { mode: "feed" });
+  if (matches.length === 0) {
+    pushText(segments, text);
+    return;
+  }
+
+  let cursor = 0;
+  for (const match of matches) {
+    pushText(segments, text.slice(cursor, match.replaceStart));
+    segments.push({
+      type: "math",
+      content: match.latex,
+      mode: match.mode,
+      raw: match.raw,
+    });
+    cursor = match.replaceEnd;
+  }
+
+  pushText(segments, text.slice(cursor));
+}
+
+/**
+ * Splits `text` into lossless `Segment[]`, converting feed-grade Unicode and
+ * plain-math expressions into `"math"` segments while preserving every surrounding
+ * character verbatim.
+ */
+export function parsePlainMathSegments(text: string): Segment[] {
+  if (text === "") return [];
+  if (!hasPlainMath(text)) {
+    return [{ type: "text", content: text }];
+  }
+
+  const segments: Segment[] = [];
+  pushPlainMathSegments(text, segments);
+  return segments;
+}
+
+/**
+ * Unified detector for undelimited posts: returns `true` if `text` contains
+ * either strong bare LaTeX/chemistry commands OR feed-grade Unicode/plain math.
+ */
+export function hasUndelimitedMath(
+  text: string,
+  options?: BareLatexOptions
+): boolean {
+  const maybeBare = text.includes("\\");
+  const maybePlain = mightContainPlainMath(text);
+  if (!maybeBare && !maybePlain) return false;
+  if (hasWindowsDrivePath(text)) return false;
+  if (hasExplicitDelimitedMath(text)) return false;
+
+  if (maybeBare && hasBareLatex(text, options)) {
+    return true;
+  }
+
+  if (maybePlain && detectPlainMathExpressions(text, { mode: "feed" }).length > 0) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Unified lossless segmenter for undelimited posts: handles bare LaTeX/chemistry
+ * commands, Unicode/plain-math formulas, and hybrid posts combining both.
+ */
+export function parseUndelimitedMathSegments(
+  text: string,
+  options?: BareLatexOptions
+): Segment[] {
+  if (text === "") return [];
+
+  if (text.includes("\\") && hasBareLatex(text, options)) {
+    const bareSegments = parseBareLatexSegments(text, options);
+    const merged: Segment[] = [];
+
+    for (const seg of bareSegments) {
+      if (
+        seg.type === "text" &&
+        !seg.content.includes("\\") &&
+        mightContainPlainMath(seg.content)
+      ) {
+        pushPlainMathSegments(seg.content, merged);
+      } else if (seg.type === "text") {
+        pushText(merged, seg.content);
+      } else {
+        merged.push(seg);
+      }
+    }
+
+    return merged;
+  }
+
+  return parsePlainMathSegments(text);
+}
+

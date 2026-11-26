@@ -3,7 +3,11 @@ import {
   extractLatexCommands,
   findMatchingBrace,
   hasBareLatex,
+  hasPlainMath,
+  hasUndelimitedMath,
   parseBareLatexSegments,
+  parsePlainMathSegments,
+  parseUndelimitedMathSegments,
 } from "../src/core/detector.js";
 import type { Segment } from "../src/core/types.js";
 
@@ -189,3 +193,50 @@ describe("parseBareLatexSegments (Challenge #3.4)", () => {
     }
   });
 });
+
+describe("Unicode / plain-math & unified undelimited detection (v1.5)", () => {
+  it("detects Unicode and plain-math posts while rejecting prose and already-delimited posts", () => {
+    expect(
+      hasPlainMath("ζ(s) = (1 − 1/2^s + 1/3^s − 1/4^s + ...) / (1 − 2^(1−s))")
+    ).toBe(true);
+    expect(hasPlainMath("Converges for Re(s)>0 and 0<Re(s)<1.")).toBe(true);
+    expect(hasPlainMath("Euler: e^(iπ) + 1 = 0")).toBe(true);
+    expect(hasPlainMath("Already delimited: $$e^{i\\pi} + 1 = 0$$")).toBe(false);
+    expect(hasPlainMath("Path C:\\Users\\x=2\\file.txt")).toBe(false);
+    expect(hasPlainMath("We ran an A/B test on our 120 m² office (CO₂).")).toBe(false);
+    expect(hasPlainMath("4K screen 3840 × 2160 and $50 for $BTC")).toBe(false);
+  });
+
+  it("segments Unicode/plain-math and hybrid posts losslessly", () => {
+    const zetaPost = [
+      "For the zeta function, analytic continuation to 0<Re(s)<1 is easy.",
+      "ζ(s) = (1 − 1/2^s + 1/3^s − 1/4^s + ...) / (1 − 2^(1−s))",
+      "Converges for Re(s)>0 and defines ζ(s)!",
+    ].join("\n");
+
+    const plainSegs = parsePlainMathSegments(zetaPost);
+    expect(reconstruct(plainSegs)).toBe(zetaPost);
+    expect(plainSegs.filter((s) => s.type === "math")).toHaveLength(4);
+
+    // Hybrid post combining inline plain math on line 1 and raw LaTeX on line 2
+    const hybrid = "For 0<Re(s)<1:\n\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}";
+    expect(hasUndelimitedMath(hybrid)).toBe(true);
+    const hybridSegs = parseUndelimitedMathSegments(hybrid);
+    expect(reconstruct(hybridSegs)).toBe(hybrid);
+    expect(hybridSegs.filter((s) => s.type === "math")).toHaveLength(2);
+
+    // Non-empty and non-adjacent text invariants
+    for (const segs of [plainSegs, hybridSegs]) {
+      for (let i = 0; i < segs.length; i++) {
+        const cur = segs[i];
+        if (cur.type === "text") {
+          expect(cur.content.length).toBeGreaterThan(0);
+          if (i > 0) {
+            expect(segs[i - 1].type).not.toBe("text");
+          }
+        }
+      }
+    }
+  });
+});
+

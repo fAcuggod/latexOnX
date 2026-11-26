@@ -10,6 +10,7 @@ export interface Messages {
   optionsTitle: string;
   chemistryLabel: string;
   bareLatexLabel: string;
+  autoBareLatexLabel: string;
   composerPreviewLabel: string;
   syntaxTitle: string;
   modeInline: string;
@@ -74,7 +75,8 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     statusPaused: "Paused",
     optionsTitle: "Features",
     chemistryLabel: "Chemistry (\\ce, \\pu)",
-    bareLatexLabel: "Undelimited LaTeX button",
+    bareLatexLabel: "Undelimited formulas",
+    autoBareLatexLabel: "Auto-render undelimited",
     composerPreviewLabel: "Live composer preview",
     syntaxTitle: "Supported syntax",
     modeInline: "Inline",
@@ -85,8 +87,8 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     copiedBadge: "LaTeX copied ✓",
     renderBareBtn: "∑ Render LaTeX",
     showRawBtn: "↺ Show raw",
-    renderBareTooltip: "Render detected undelimited LaTeX in this post",
-    showRawTooltip: "Restore original raw LaTeX text",
+    renderBareTooltip: "Render detected undelimited math or LaTeX in this post",
+    showRawTooltip: "Restore original text",
     previewTitle: "LaTeX Preview",
     previewCloseTooltip: "Hide preview",
     previewReadySingular: "1 formula ready",
@@ -137,7 +139,8 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     statusPaused: "Pausado",
     optionsTitle: "Funciones",
     chemistryLabel: "Química (\\ce, \\pu)",
-    bareLatexLabel: "Botón LaTeX sin delimitadores",
+    bareLatexLabel: "Fórmulas sin delimitadores",
+    autoBareLatexLabel: "Auto-renderizar sin delimitadores",
     composerPreviewLabel: "Vista previa al redactar",
     syntaxTitle: "Sintaxis soportada",
     modeInline: "En línea (inline)",
@@ -148,8 +151,8 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     copiedBadge: "LaTeX copiado ✓",
     renderBareBtn: "∑ Renderizar LaTeX",
     showRawBtn: "↺ Ver original",
-    renderBareTooltip: "Renderizar fórmulas LaTeX detectadas sin delimitadores",
-    showRawTooltip: "Restaurar el texto LaTeX original",
+    renderBareTooltip: "Renderizar fórmulas matemáticas o LaTeX detectadas sin delimitadores",
+    showRawTooltip: "Restaurar el texto original",
     previewTitle: "Vista previa LaTeX",
     previewCloseTooltip: "Ocultar vista previa",
     previewReadySingular: "1 fórmula lista",
@@ -200,7 +203,8 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     statusPaused: "已暂停",
     optionsTitle: "功能选项",
     chemistryLabel: "化学公式 (\\ce, \\pu)",
-    bareLatexLabel: "无定界符 LaTeX 按钮",
+    bareLatexLabel: "无定界符公式",
+    autoBareLatexLabel: "自动渲染无定界符公式",
     composerPreviewLabel: "发帖实时预览",
     syntaxTitle: "支持的语法",
     modeInline: "行内公式 (inline)",
@@ -211,8 +215,8 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     copiedBadge: "已复制 LaTeX ✓",
     renderBareBtn: "∑ 渲染 LaTeX",
     showRawBtn: "↺ 显示原文",
-    renderBareTooltip: "渲染此帖中检测到的无定界符 LaTeX 公式",
-    showRawTooltip: "恢复原始 LaTeX 文本",
+    renderBareTooltip: "渲染此帖中检测到的无定界符数学或 LaTeX 公式",
+    showRawTooltip: "恢复原始文本",
     previewTitle: "LaTeX 实时预览",
     previewCloseTooltip: "隐藏预览",
     previewReadySingular: "1 个公式就绪",

@@ -33,16 +33,16 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 - **Live composer preview & diagnostics:** floating, debounced KaTeX preview below X's post/reply composer showing unclosed delimiters, unbalanced braces, disallowed macros, and syntax errors *before* posting, plus a one-click `Use inline \(...\)` tip when a `$$...$$` display block is embedded mid-sentence.
 - **On-demand Formula Explorer & Quick Symbol Bar:** a discrete `∑` button appears on any focused X composer (even when empty) to open a searchable catalog of formulas and symbols organized by category (`Basics`, `Calculus`, `Algebra`, `Physics`, `Probability`, `Chemistry`) alongside the Quick Symbol Bar (`\(x\)`, `$$`, `a/b`, `√`, `x²`, `∑`, `∫`, `π`, `∞`, `≤`, `→`, `\ce`).
 - **Inline composer autocomplete:** type formula names in English, Spanish, or Chinese (e.g. `riemann zeta`, `funcion zeta de riemann`, `formula cuadratica`, `欧拉恒等式`), search with `:query`, or type `\frac` / `\sum` commands and press `Tab` (or click) to insert LaTeX.
-- **Plain-math AST compiler (`f(x) = 5x + 2` -> LaTeX):** pure recursive-descent parser (`Lexer -> AST -> LaTeX`) previews everyday expressions like `f(x) = 5x + 2`, `(a+b)/(c-d)`, `sqrt(a^2+b^2)`, `det(A) = ad - bc`, and `Av = lambda v` directly in KaTeX with one-click `Convert to LaTeX` (`Tab`) or direct 3x `PNG` export, strictly ignoring dates, scores, and prose.
+- **Plain-math & Unicode-math AST compiler (`f(x) = 5x + 2`, `ζ(s) = ...` -> LaTeX):** pure recursive-descent parser (`Lexer -> AST -> LaTeX`) supporting Unicode Greek letters, math operators (`±`, `≤`, `≥`, `→`, `∈`, `√`, `∑`, `∫`, `∞`), superscripts/subscripts (`x²`, `aₙ₊₁`), and ellipsis (`...`), with live composer conversion (`Tab`) and direct 3x `PNG` export while strictly ignoring dates, scores, slash abbreviations, units, and prose.
 - **One-click 3x HiDPI PNG export:** click `PNG` in the live preview header to copy a crisp 3x formula card matching X's Light, Dim, or Lights Out theme directly to your clipboard (paste into X with `Ctrl+V`, with automatic `.png` download fallback).
 - **Chemistry & physical units (`mhchem`):** natively renders chemical formulas, ionic charges, reaction arrows, and physical units (`\ce{...}`, `\pu{...}`), toggleable from the popup.
-- **Opt-in undelimited LaTeX button:** detects posts containing unambiguous raw LaTeX/chemistry commands (ignoring code escapes and Windows paths) and offers a discrete `∑ Render LaTeX` / `↺ Show raw` toggle right below the post.
+- **Undelimited LaTeX & Unicode math in the feed (opt-in or auto-render):** detects posts containing raw LaTeX/chemistry commands OR Unicode/plain-math formulas (such as `ζ(s) = (1 - 1/2^s + 1/3^s - 1/4^s + ...) / (1 - 2^(1-s))` or `0<Re(s)<1`), offering either a discrete `∑ Render LaTeX` / `↺ Show raw` toggle or automatic rendering via the popup's **Auto-render undelimited** option (always keeping `↺ Show raw` to revert any post).
 - **Built for X's modern frontend:** targets resilient HTML5 semantic landmarks (`<article>` / `[role="article"]`) and builds DOM trees directly via `katex.render()` with **zero `.innerHTML`**, complying with X's strict *Trusted Types* CSP.
 - **60-120 FPS infinite scrolling:** `O(n)` zero-allocation fast-path skips non-math posts immediately, paired with a `requestAnimationFrame`-batched `MutationObserver`.
 - **Zero-dependency Rust/WASM core:** pure parser and anti-DoS validator ported to zero-copy Rust (`crates/latex-core/`), compiled to a **37.5 KB** `.wasm` module and verified for differential equivalence against TypeScript.
 - **Defense-in-depth security:** pre-render validator enforces length caps, brace nesting depth, and blocks unsafe macros (`\def`, `\let`, `\newcommand`, `\href`, `\htmlStyle`, etc.) before KaTeX executes; plain text is always inserted as `TextNode` (XSS-safe).
 - **Accessible & theme-native:** outputs HTML + native MathML for screen readers and adapts automatically to X's **Light**, **Dim**, and **Lights Out** themes.
-- **Click-to-copy & instant On/Off:** click (or press Enter/Space on) any rendered formula to copy its LaTeX source; toggle rendering, chemistry, live preview, or the opt-in button live without reloading tabs.
+- **Click-to-copy & instant On/Off:** click (or press Enter/Space on) any rendered formula to copy its LaTeX source; toggle rendering, chemistry, undelimited detection, auto-render undelimited, or live preview live without reloading tabs.
 - **Multilingual UI:** built-in **English**, **Español**, and **简体中文** support (auto-detected with manual switcher in the popup).
 - **Minimal permissions:** requests only `"storage"`, runs with no background service worker, and bundles `.woff2` KaTeX fonts locally (zero external CDNs).
 
@@ -57,8 +57,9 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 | **Display block** | `\[...\]` | `\[\int_0^1 x^2\,dx = \frac{1}{3}\]` |
 | **Chemistry (`mhchem`)** | `\ce{...}`, `\pu{...}` | `$$\ce{CO2 + C <=> 2 CO}$$`, `\(\pu{9.8 m/s^2}\)` |
 | **Composer autocomplete** | Natural names, `:query`, `\cmd` + `Tab` | `riemann zeta`, `:cuad`, `\frac` |
-| **Plain math (composer)** | Algebraic syntax + `Tab` / `Convert` | `f(x) = 5x + 2`, `(a+b)/(c-d)`, `sqrt(a^2+b^2)` |
-| **Undelimited (opt-in)** | `∑ Render LaTeX` button | `\zeta(s) = \sum_{n=1}^{\infty} \frac{1}{n^s}` |
+| **Plain math (composer)** | Algebraic / Unicode syntax + `Tab` / `Convert` | `f(x) = 5x + 2`, `(a+b)/(c-d)`, `e^(iπ) + 1 = 0` |
+| **Undelimited raw LaTeX** | `∑ Render LaTeX` or Auto-render undelimited | `\zeta(s) = \sum_{n=1}^{\infty} \frac{1}{n^s}` |
+| **Undelimited Unicode math** | `∑ Render LaTeX` or Auto-render undelimited | `ζ(s) = (1 - 1/2^s + 1/3^s - ...) / (1 - 2^(1-s))` |
 | **Ignored** | Single `$` | Currency notation & cashtags *(never altered)* |
 
 ---
@@ -67,7 +68,7 @@ Sharing mathematics on **X** (`x.com`) usually means uploading low-resolution sc
 
 ### Option A: Prebuilt ZIP (No Node.js Required)
 
-1. Download `latex-on-x-v1.4.0.zip` from [GitHub Releases](https://github.com/fAcuggod/latexOnX/releases) and extract it to a folder.
+1. Download `latex-on-x-v1.5.0.zip` from [GitHub Releases](https://github.com/fAcuggod/latexOnX/releases) and extract it to a folder.
 2. Open `chrome://extensions` (or `brave://extensions`, `edge://extensions`).
 3. Enable **Developer mode** (top-right).
 4. Click **Load unpacked** and select the extracted folder.
@@ -120,10 +121,10 @@ latexOnX/
 │   │   ├── types.ts             # Discriminated union domain types
 │   │   ├── parser.ts            # Lossless linear delimiter scanner
 │   │   ├── validator.ts         # Anti-DoS validator (length, brace depth, disallowed macros)
-│   │   ├── detector.ts          # High-precision bare-LaTeX & chemistry detector/segmenter
+│   │   ├── detector.ts          # High-precision bare-LaTeX, chemistry & Unicode/plain-math detector
 │   │   ├── composerPreview.ts   # Draft analyzer, unclosed/inline-display hints & debouncer
 │   │   ├── formulaCatalog.ts    # Multilingual natural-name formula catalog & command autocomplete
-│   │   ├── plainMathCompiler.ts # Plain-math Lexer -> Recursive-Descent AST -> LaTeX compiler
+│   │   ├── plainMathCompiler.ts # Plain & Unicode math Lexer -> AST -> LaTeX compiler
 │   │   ├── symbolBar.ts         # Quick Symbol Bar palette & selection-aware insertion
 │   │   └── pngExporter.ts       # 3x HiDPI export geometry, CSS font rewriter & SVG builder
 │   ├── wasm/            # Compiled WebAssembly module + linear-memory TypeScript bridge
@@ -132,7 +133,7 @@ latexOnX/
 │   ├── renderer/
 │   │   └── katexRenderer.ts # Trusted-Types-safe KaTeX + mhchem pipeline (HTML + MathML)
 │   ├── content/         # Browser layer (Chrome Manifest V3)
-│   │   ├── domProcessor.ts       # Safe TreeWalker, opt-in button bar, restore & copy
+│   │   ├── domProcessor.ts       # Safe TreeWalker, opt-in/auto-render undelimited bar, restore & copy
 │   │   ├── composerOverlay.ts    # Floating preview, launcher, explorer, symbol bar & PNG export
 │   │   ├── formulaImageExport.ts # Base64 font embedder, SVG-to-Canvas PNG & clipboard export
 │   │   ├── observer.ts           # rAF-batched MutationObserver for SPA/infinite scroll
@@ -143,7 +144,7 @@ latexOnX/
 │   └── demo/            # Live local KaTeX + mhchem sandbox
 ├── public/              # manifest.json (MV3), icons & Chrome _locales
 ├── scripts/             # build.mjs, package.mjs, build-wasm.mjs & benchmark.mjs
-├── tests/               # 125 automated Vitest unit, DOM & WASM equivalence tests
+├── tests/               # 133 automated Vitest unit, DOM & WASM equivalence tests
 └── docs/                # Architecture, TypeScript & Rust/WASM guides
 ```
 
@@ -167,7 +168,7 @@ Measured via `npm run bench` on **10,000 mixed X posts** (8,000 valid formulas, 
 
 ```bash
 npm run typecheck   # Strict TypeScript type checking (tsc --noEmit)
-npm test            # Run all 125 Vitest unit, DOM & WASM equivalence tests
+npm test            # Run all 133 Vitest unit, DOM & WASM equivalence tests
 npm run test:rust   # Run all 21 native Rust unit tests (cargo test)
 npm run build:wasm  # Recompile crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # Run TypeScript vs. Rust/WASM benchmark over 10,000 posts
@@ -187,9 +188,10 @@ npm run check       # Run typecheck + tests + extension build
 - [x] **v0.4 (3x HiDPI PNG Export):** one-click copy of crisp formula images for sharing with non-extension users.
 - [x] **v1.0 (Rust/WASM Core):** zero-dependency Rust/WebAssembly parser and validator (`37.5 KB`), differential equivalence tests, and reproducible TypeScript vs. WASM benchmarks.
 - [x] **v1.1 (Smart Composer Autocomplete & Formula Catalog):** accent-insensitive EN/ES/ZH natural-name formula suggestions, `:query` search, and `\command` Tab-completion directly inside X's composer.
-- [x] **v1.2 (Plain-Math / AsciiMath-lite Compiler):** pure recursive-descent parser (`Lexer -> AST -> LaTeX`) converting everyday expressions like `f(x) = 5x + 2` and `(a+b)/(c+d)` into LaTeX with one click.
+- [x] **v1.2 (Plain-Math / AsciiMath-lite Compiler):** pure recursive-descent parser (`Lexer -> AST -> LaTeX`) converting everyday expressions like `f(x) = 5x + 2` and `(a+b)/(c-d)` into LaTeX with one click.
 - [x] **v1.3 (Quick Symbol Bar & Inline-Display Assistant):** non-blocking 1-click `Use inline \(...\)` tip for mid-sentence `$$...$$` blocks and a compact clickable symbol toolbar (`\(x\)`, `$$`, `a/b`, `√`, `x²`, `∑`, `∫`, `π`, `∞`, `≤`, `→`, `\ce`) inside the composer panel.
 - [x] **v1.4 (On-Demand Formula Explorer & Launcher):** discrete `∑` composer launcher opening a searchable, categorized formula and symbol browser on empty or active drafts with lazy KaTeX rendering and selection-preserving insertion.
+- [x] **v1.5 (Unicode/Plain-Math Feed Detection & Auto-Render Toggle):** detects and renders undelimited Unicode/plain-math tweets (Greek letters, superscripts/subscripts, roots, ellipsis, `Re`/`Im`, big operators) with strict anti-false-positive feed filters, plus a popup toggle to auto-render detected undelimited formulas automatically while preserving the `↺ Show raw` button.
 
 ---
 

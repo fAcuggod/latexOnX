@@ -32,10 +32,10 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 - **Vista previa en vivo al redactar:** panel flotante con *debounce* debajo del compositor de X que renderiza tus fórmulas en tiempo real, avisa antes de publicar si faltan delimitadores o llaves, y ofrece un botón rápido `Pasar a en línea \(...\)` cuando un bloque `$$...$$` aparece en medio de una oración.
 - **Explorador de fórmulas y barra rápida de símbolos (`∑`):** un botón discreto `∑` en cualquier compositor enfocado (incluso vacío) abre un buscador de fórmulas y símbolos por categoría (`Básicos`, `Cálculo`, `Álgebra`, `Física`, `Probabilidad`, `Química`) junto con la barra rápida (`\(x\)`, `$$`, `a/b`, `√`, `x²`, `∑`, `∫`, `π`, `∞`, `≤`, `→`, `\ce`).
 - **Autocompletado en línea al escribir:** escribí nombres de fórmulas en español, inglés o chino (ej. `funcion zeta de riemann`, `formula cuadratica`, `teorema de pitagoras`), buscá con `:consulta` o completá comandos `\frac` / `\sum` presionando `Tab` o con un clic.
-- **Compilador de matemática natural con AST (`f(x) = 5x + 2` -> LaTeX):** parser recursivo descendente puro (`Lexer -> AST -> LaTeX`) que previsualiza expresiones cotidianas como `f(x) = 5x + 2`, `(a+b)/(c-d)`, `sqrt(a^2+b^2)`, `det(A) = ad - bc` o `Av = lambda v` en vivo con botón `Convertir a LaTeX` (`Tab`) o exportación directa a `PNG` 3x, ignorando fechas, puntajes y texto común.
+- **Compilador de matemática natural y Unicode con AST (`f(x) = 5x + 2`, `ζ(s) = ...` -> LaTeX):** parser recursivo descendente puro (`Lexer -> AST -> LaTeX`) con soporte para letras griegas Unicode, operadores (`±`, `≤`, `≥`, `→`, `∈`, `√`, `∑`, `∫`, `∞`), superíndices/subíndices (`x²`, `aₙ₊₁`) y puntos suspensivos (`...`), con conversión en un clic (`Tab`) y exportación directa a `PNG` 3x, ignorando fechas, puntajes, abreviaturas con barra, unidades y texto común.
 - **Exportación PNG 3x HiDPI en un clic:** botón `PNG` en la cabecera de la vista previa que copia una tarjeta nítida 3x adaptada al tema activo de X directo al portapapeles (pegás con `Ctrl+V` en X, con descarga `.png` automática como respaldo).
 - **Química y unidades físicas (`mhchem`):** renderiza fórmulas químicas, cargas iónicas, flechas de reacción y unidades (`\ce{...}`, `\pu{...}`), activable desde el popup.
-- **Botón opt-in para LaTeX sin delimitadores:** detecta publicaciones con comandos LaTeX/químicos inequívocos (ignorando escapes de código y rutas Windows) y muestra un botón discreto `∑ Renderizar LaTeX` / `↺ Ver original`.
+- **LaTeX y matemática Unicode sin delimitadores en el feed (botón o auto-renderizado):** detecta publicaciones con comandos LaTeX/químicos o fórmulas simuladas en Unicode/texto plano (como `ζ(s) = (1 - 1/2^s + 1/3^s - 1/4^s + ...) / (1 - 2^(1-s))` o `0<Re(s)<1`), ofreciendo el botón `∑ Renderizar LaTeX` / `↺ Ver original` o renderizado automático con la opción **Auto-renderizar sin delimitadores** del popup (manteniendo siempre `↺ Ver original` para revertir cualquier post).
 - **Diseñada para el frontend actual de X:** utiliza etiquetas semánticas estándar (`<article>` / `[role="article"]`) y construye nodos DOM directamente con `katex.render()` (**cero `.innerHTML`**), 100% compatible con la política *Trusted Types* de X.
 - **Scroll infinito a 60-120 FPS:** *fast-path* `O(n)` sin asignaciones de memoria que descarta publicaciones sin fórmulas al instante, junto con un `MutationObserver` agrupado en `requestAnimationFrame`.
 - **Núcleo en Rust/WebAssembly sin dependencias:** parser y validador anti-DoS portados a Rust *zero-copy* (`crates/latex-core/`), compilados a un binario `.wasm` de **37.5 KB** y validados con tests de equivalencia diferencial contra TypeScript.
@@ -56,8 +56,9 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 | **En bloque (`display`)** | `\[...\]` | `\[\int_0^1 x^2\,dx = \frac{1}{3}\]` |
 | **Química (`mhchem`)** | `\ce{...}`, `\pu{...}` | `$$\ce{CO2 + C <=> 2 CO}$$`, `\(\pu{9.8 m/s^2}\)` |
 | **Autocompletado** | Nombres naturales, `:consulta`, `\cmd` + `Tab` | `funcion zeta de riemann`, `:cuad`, `\frac` |
-| **Matemática natural** | Sintaxis algebraica + `Tab` / `Convertir` | `f(x) = 5x + 2`, `(a+b)/(c-d)`, `sqrt(a^2+b^2)` |
-| **Sin delimitadores (opt-in)** | Botón `∑ Renderizar LaTeX` | `\zeta(s) = \sum_{n=1}^{\infty} \frac{1}{n^s}` |
+| **Matemática natural** | Sintaxis algebraica / Unicode + `Tab` / `Convertir` | `f(x) = 5x + 2`, `(a+b)/(c-d)`, `e^(iπ) + 1 = 0` |
+| **LaTeX sin delimitadores** | Botón `∑ Renderizar LaTeX` o Auto-renderizar | `\zeta(s) = \sum_{n=1}^{\infty} \frac{1}{n^s}` |
+| **Unicode / texto plano** | Botón `∑ Renderizar LaTeX` o Auto-renderizar | `ζ(s) = (1 - 1/2^s + 1/3^s - ...) / (1 - 2^(1-s))` |
 | **Ignorado** | `$` simple | Precios y *cashtags* *(nunca se alteran)* |
 
 ---
@@ -66,7 +67,7 @@ Compartir matemáticas en **X** (`x.com`) suele obligar a subir capturas borrosa
 
 ### Opción A: Descargar ZIP compilado (sin Node.js)
 
-1. Descargá `latex-on-x-v1.4.0.zip` desde [GitHub Releases](https://github.com/fAcuggod/latexOnX/releases) y descomprimilo en una carpeta.
+1. Descargá `latex-on-x-v1.5.0.zip` desde [GitHub Releases](https://github.com/fAcuggod/latexOnX/releases) y descomprimilo en una carpeta.
 2. Abrí `chrome://extensions` (o `brave://extensions`, `edge://extensions`).
 3. Activá el **Modo de desarrollador**.
 4. Hacé clic en **Cargar descomprimida** y seleccioná la carpeta descomprimida.
@@ -120,7 +121,7 @@ Medidos con `npm run bench` sobre **10.000 publicaciones mixtas de X** (8.000 f�
 
 ```bash
 npm run typecheck   # Verifica tipos estrictos con TypeScript (tsc --noEmit)
-npm test            # Ejecuta los 125 tests unitarios, de DOM y equivalencia WASM
+npm test            # Ejecuta los 133 tests unitarios, de DOM y equivalencia WASM
 npm run test:rust   # Ejecuta los 21 tests nativos en Rust (cargo test)
 npm run build:wasm  # Recompila crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # Corre el benchmark TypeScript vs. Rust/WASM (10.000 posts)

@@ -1,5 +1,11 @@
 import { createComposerPreviewController } from "../content/composerOverlay.js";
-import { installInteractionHandlers } from "../content/domProcessor.js";
+import {
+  installInteractionHandlers,
+  processAllTweets,
+  removeBareLatexBars,
+  restoreAllMath,
+  type ProcessOptions,
+} from "../content/domProcessor.js";
 import { createTimelineObserver } from "../content/observer.js";
 
 interface SamplePost {
@@ -24,10 +30,16 @@ const INITIAL_POSTS: SamplePost[] = [
     text: "Ionic precipitation with mhchem: \\(\\ce{Fe^{2+} + 2OH- -> Fe(OH)2}\\) and Boudouard equilibrium:\n$$\\ce{CO2 + C <=> 2 CO}$$",
   },
   {
+    author: "Unicode Zeta Post",
+    handle: "@unicode_math",
+    initials: "UZ",
+    text: "For the zeta function, analytic continuation to 0<Re(s)<1 is actually pretty easy.\nζ(s) = (1 − 1/2^s + 1/3^s − 1/4^s + ...) / (1 − 2^(1−s))\nThe alternating series converges for Re(s)>0, so this formula defines ζ(s) in the critical strip!",
+  },
+  {
     author: "Undelimited Post",
     handle: "@opt_in_demo",
     initials: "UD",
-    text: "Forgot delimiters on this one (try the discrete button below):\n\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}",
+    text: "Forgot delimiters on this one (try the discrete button below or Auto-render undelimited):\n\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s}",
     link: "#LaTeXOnX",
   },
   {
@@ -41,6 +53,18 @@ const INITIAL_POSTS: SamplePost[] = [
 const feedEl = document.getElementById("feed");
 const inputEl = document.getElementById("composer-input") as HTMLTextAreaElement | null;
 const publishBtn = document.getElementById("publish-btn");
+const autoBareBtn = document.getElementById("toggle-auto-bare-demo");
+
+let autoRenderBare = false;
+
+function getOptions(): ProcessOptions {
+  return {
+    locale: "en",
+    enableChemistry: true,
+    enableBareLatexButton: true,
+    autoRenderBareLatex: autoRenderBare,
+  };
+}
 
 function appendPost(post: SamplePost, prepend = false): void {
   if (!feedEl) return;
@@ -94,8 +118,10 @@ function appendPost(post: SamplePost, prepend = false): void {
 }
 
 // Uses the exact same MutationObserver, composer preview, and interaction handlers as the real extension
-installInteractionHandlers(document);
-const observer = createTimelineObserver();
+installInteractionHandlers(document, getOptions);
+const observer = createTimelineObserver((scope) =>
+  processAllTweets(scope, getOptions())
+);
 observer.start(feedEl ?? document.body);
 const composerPreview = createComposerPreviewController(document);
 composerPreview.start();
@@ -103,6 +129,19 @@ composerPreview.start();
 for (const post of INITIAL_POSTS) {
   appendPost(post);
 }
+
+autoBareBtn?.addEventListener("click", () => {
+  autoRenderBare = !autoRenderBare;
+  autoBareBtn.classList.toggle("active", autoRenderBare);
+  autoBareBtn.textContent = autoRenderBare
+    ? "Auto-render undelimited: ON"
+    : "Auto-render undelimited: OFF";
+  if (feedEl) {
+    restoreAllMath(feedEl, "bare");
+    removeBareLatexBars(feedEl);
+    processAllTweets(feedEl, getOptions());
+  }
+});
 
 publishBtn?.addEventListener("click", () => {
   const value = inputEl?.value.trim();

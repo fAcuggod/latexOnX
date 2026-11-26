@@ -154,5 +154,119 @@ describe("plainMathCompiler (v1.2 Lexer -> AST -> LaTeX)", () => {
       "Ya tenemos \\(f(x) = 4x + d\\) y luego \\(f'(x) = 4\\) listo."
     );
   });
+
+  it("compiles Unicode Greek, operators, superscripts/subscripts, roots, ellipsis, and big operators (v1.5)", () => {
+    expect(
+      compilePlainMathToLatex(
+        "ζ(s) = (1 − 1/2^s + 1/3^s − 1/4^s + ...) / (1 − 2^(1−s))",
+        { mode: "feed" }
+      )?.latex
+    ).toBe(
+      "\\zeta(s) = \\frac{1 - \\frac{1}{2^s} + \\frac{1}{3^s} - \\frac{1}{4^s} + \\cdots}{1 - 2^{1 - s}}"
+    );
+    expect(compilePlainMathToLatex("0<Re(s)<1", { mode: "feed" })?.latex).toBe(
+      "0 < \\operatorname{Re}(s) < 1"
+    );
+    expect(compilePlainMathToLatex("Re(s)>0", { mode: "feed" })?.latex).toBe(
+      "\\operatorname{Re}(s) > 0"
+    );
+    expect(compilePlainMathToLatex("ζ(s)", { mode: "feed" })?.latex).toBe(
+      "\\zeta(s)"
+    );
+    expect(compilePlainMathToLatex("e^(iπ) + 1 = 0", { mode: "feed" })?.latex).toBe(
+      "e^{i\\pi} + 1 = 0"
+    );
+    expect(compilePlainMathToLatex("e^{iπ} + 1 = 0", { mode: "feed" })?.latex).toBe(
+      "e^{i\\pi} + 1 = 0"
+    );
+    expect(compilePlainMathToLatex("a² + b² = c²", { mode: "feed" })?.latex).toBe(
+      "a^2 + b^2 = c^2"
+    );
+    expect(compilePlainMathToLatex("E = mc²", { mode: "feed" })?.latex).toBe(
+      "E = mc^2"
+    );
+    expect(
+      compilePlainMathToLatex("x = (−b ± √(b² − 4ac)) / (2a)", { mode: "feed" })
+        ?.latex
+    ).toBe("x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}");
+    expect(
+      compilePlainMathToLatex("∑_(n=1)^∞ 1/n² = π²/6", { mode: "feed" })?.latex
+    ).toBe("\\sum_{n = 1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}");
+    expect(
+      compilePlainMathToLatex("∑_{n=1}^∞ 1/n^s = ζ(s)", { mode: "feed" })?.latex
+    ).toBe("\\sum_{n = 1}^{\\infty} \\frac{1}{n^s} = \\zeta(s)");
+    expect(
+      compilePlainMathToLatex("∫_0^∞ e^(-x²) dx = √π/2", { mode: "feed" })?.latex
+    ).toBe("\\int_0^{\\infty} e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}");
+    expect(
+      compilePlainMathToLatex("lim_(x→0) sin(x)/x = 1", { mode: "feed" })?.latex
+    ).toBe("\\lim_{x \\to 0} \\frac{\\sin(x)}{x} = 1");
+    expect(compilePlainMathToLatex("∀x ∈ ℝ", { mode: "feed" })?.latex).toBe(
+      "\\forall x \\in \\mathbb{R}"
+    );
+    expect(
+      compilePlainMathToLatex("aₙ₊₁ = 2aₙ + 1", { mode: "feed" })?.latex
+    ).toBe("a_{n + 1} = 2a_n + 1");
+    expect(
+      compilePlainMathToLatex("1 + 1/2 + 1/4 + ... = 2", { mode: "feed" })?.latex
+    ).toBe("1 + \\frac{1}{2} + \\frac{1}{4} + \\cdots = 2");
+  });
+
+  it("extracts every formula from the Riemann zeta Unicode tweet with proper inline/display modes", () => {
+    const tweet = [
+      "For the zeta function, analytic continuation to 0<Re(s)<1 is actually pretty easy.",
+      "ζ(s) = (1 − 1/2^s + 1/3^s − 1/4^s + ...) / (1 − 2^(1−s))",
+      "The alternating series converges for Re(s)>0, so this formula defines ζ(s) in the region where the nontrivial zeros relevant to the Riemann hypothesis lie!",
+    ].join("\n");
+
+    const matches = detectPlainMathExpressions(tweet, { mode: "feed" });
+    expect(matches.map((m) => ({ raw: m.raw, latex: m.latex, mode: m.mode }))).toEqual([
+      {
+        raw: "0<Re(s)<1",
+        latex: "0 < \\operatorname{Re}(s) < 1",
+        mode: "inline",
+      },
+      {
+        raw: "ζ(s) = (1 − 1/2^s + 1/3^s − 1/4^s + ...) / (1 − 2^(1−s))",
+        latex:
+          "\\zeta(s) = \\frac{1 - \\frac{1}{2^s} + \\frac{1}{3^s} - \\frac{1}{4^s} + \\cdots}{1 - 2^{1 - s}}",
+        mode: "display",
+      },
+      {
+        raw: "Re(s)>0",
+        latex: "\\operatorname{Re}(s) > 0",
+        mode: "inline",
+      },
+      {
+        raw: "ζ(s)",
+        latex: "\\zeta(s)",
+        mode: "inline",
+      },
+    ]);
+  });
+
+  it("handles parenthetical prose around formulas and strictly rejects feed false positives", () => {
+    const parenthetical = "Note (where Re(s)>0) and (0<Re(s)<1 is known).";
+    const found = detectPlainMathExpressions(parenthetical, { mode: "feed" });
+    expect(found.map((m) => m.raw)).toEqual(["Re(s)>0", "0<Re(s)<1"]);
+
+    const feedFalsePositives = [
+      "We ran an A/B test on our UI/UX redesign.",
+      "I/O bound task w/o caching b/c of RAM.",
+      "Shot on f/1.8 lens at 100 km/h.",
+      "Our 120 m² office emits less CO₂ and uses H₂O.",
+      "4K monitor resolution is 3840 × 2160 or 1920 × 1080.",
+      "Pipeline flow: A → B and X → Y.",
+      "Simple label A = B or x = 1 in prose.",
+      "Η εξίσωση είναι πολύ καλή και απλή.",
+      "Wait... really... ±5% change!",
+      "const obj = {a: 1};",
+    ];
+
+    for (const sample of feedFalsePositives) {
+      expect(detectPlainMathExpressions(sample, { mode: "feed" })).toEqual([]);
+    }
+  });
 });
+
 

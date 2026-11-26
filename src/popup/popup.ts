@@ -8,6 +8,7 @@ import {
 const STORAGE_KEY_ENABLED = "enabled";
 const STORAGE_KEY_CHEMISTRY = "enableChemistry";
 const STORAGE_KEY_BARE_BUTTON = "enableBareLatexButton";
+const STORAGE_KEY_AUTO_RENDER_BARE = "autoRenderBareLatex";
 const STORAGE_KEY_COMPOSER_PREVIEW = "enableComposerPreview";
 const STORAGE_KEY_LOCALE = "locale";
 
@@ -20,6 +21,10 @@ const chemistryInput = document.getElementById(
 const bareButtonInput = document.getElementById(
   "toggle-bare-button"
 ) as HTMLInputElement | null;
+const autoBareInput = document.getElementById(
+  "toggle-auto-bare"
+) as HTMLInputElement | null;
+const autoBareRowEl = document.getElementById("auto-bare-row");
 const composerPreviewInput = document.getElementById(
   "toggle-composer-preview"
 ) as HTMLInputElement | null;
@@ -30,6 +35,7 @@ const statusTextEl = document.getElementById("status-text");
 const optionsTitleEl = document.getElementById("options-title");
 const chemistryLabelEl = document.getElementById("chemistry-label");
 const bareLatexLabelEl = document.getElementById("bare-latex-label");
+const autoBareLabelEl = document.getElementById("auto-bare-label");
 const composerPreviewLabelEl = document.getElementById("composer-preview-label");
 const syntaxTitleEl = document.getElementById("syntax-title");
 const modeInlineEl = document.getElementById("mode-inline");
@@ -43,6 +49,15 @@ const langButtons = document.querySelectorAll<HTMLButtonElement>(".lang-btn");
 let currentEnabled = true;
 let currentLocale: Locale = detectDefaultLocale();
 
+function updateAutoBareSubRow(bareEnabled: boolean): void {
+  if (autoBareInput) {
+    autoBareInput.disabled = !bareEnabled;
+  }
+  if (autoBareRowEl) {
+    autoBareRowEl.classList.toggle("is-disabled", !bareEnabled);
+  }
+}
+
 function applyTranslations(locale: Locale): void {
   currentLocale = locale;
   const msg = getMessages(locale);
@@ -53,6 +68,7 @@ function applyTranslations(locale: Locale): void {
   if (optionsTitleEl) optionsTitleEl.textContent = msg.optionsTitle;
   if (chemistryLabelEl) chemistryLabelEl.textContent = msg.chemistryLabel;
   if (bareLatexLabelEl) bareLatexLabelEl.textContent = msg.bareLatexLabel;
+  if (autoBareLabelEl) autoBareLabelEl.textContent = msg.autoBareLatexLabel;
   if (composerPreviewLabelEl) {
     composerPreviewLabelEl.textContent = msg.composerPreviewLabel;
   }
@@ -109,9 +125,18 @@ chemistryInput?.addEventListener("change", () => {
 });
 
 bareButtonInput?.addEventListener("change", () => {
+  updateAutoBareSubRow(bareButtonInput.checked);
   if (typeof chrome !== "undefined" && chrome.storage?.sync) {
     chrome.storage.sync.set({
       [STORAGE_KEY_BARE_BUTTON]: bareButtonInput.checked,
+    });
+  }
+});
+
+autoBareInput?.addEventListener("change", () => {
+  if (typeof chrome !== "undefined" && chrome.storage?.sync) {
+    chrome.storage.sync.set({
+      [STORAGE_KEY_AUTO_RENDER_BARE]: autoBareInput.checked,
     });
   }
 });
@@ -130,17 +155,23 @@ if (typeof chrome !== "undefined" && chrome.storage?.sync) {
       [STORAGE_KEY_ENABLED]: true,
       [STORAGE_KEY_CHEMISTRY]: true,
       [STORAGE_KEY_BARE_BUTTON]: true,
+      [STORAGE_KEY_AUTO_RENDER_BARE]: false,
       [STORAGE_KEY_COMPOSER_PREVIEW]: true,
       [STORAGE_KEY_LOCALE]: null,
     },
     (items) => {
       currentEnabled = Boolean(items[STORAGE_KEY_ENABLED]);
+      const bareEnabled = Boolean(items[STORAGE_KEY_BARE_BUTTON]);
       if (chemistryInput) {
         chemistryInput.checked = Boolean(items[STORAGE_KEY_CHEMISTRY]);
       }
       if (bareButtonInput) {
-        bareButtonInput.checked = Boolean(items[STORAGE_KEY_BARE_BUTTON]);
+        bareButtonInput.checked = bareEnabled;
       }
+      if (autoBareInput) {
+        autoBareInput.checked = Boolean(items[STORAGE_KEY_AUTO_RENDER_BARE]);
+      }
+      updateAutoBareSubRow(bareEnabled);
       if (composerPreviewInput) {
         composerPreviewInput.checked = Boolean(
           items[STORAGE_KEY_COMPOSER_PREVIEW]
@@ -151,5 +182,6 @@ if (typeof chrome !== "undefined" && chrome.storage?.sync) {
     }
   );
 } else {
+  updateAutoBareSubRow(bareButtonInput?.checked ?? true);
   applyTranslations(currentLocale);
 }
