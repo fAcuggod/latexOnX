@@ -132,7 +132,12 @@ describe("domProcessor", () => {
     formula.click();
     expect(writeText).toHaveBeenCalledWith("E = mc^2");
     expect(formula.classList.contains("latex-on-x-copied")).toBe(true);
+    const toast = document.querySelector('[data-latex-on-x-toast="true"]');
+    expect(toast).not.toBeNull();
+    expect(toast?.parentNode).toBe(document.body);
+    expect(toast?.textContent).toBe("已复制 LaTeX ✓");
     uninstall();
+    expect(document.querySelector('[data-latex-on-x-toast="true"]')).toBeNull();
   });
 
   it("complies with strict Trusted Types CSP on x.com (never assigns .innerHTML)", () => {

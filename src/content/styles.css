@@ -43,25 +43,28 @@
   color: inherit;
 }
 
-/* Localized micro-toast shown when copying LaTeX source */
-.latex-on-x-copied::after {
-  content: attr(data-copied-label);
-  position: absolute;
-  bottom: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
+/* Brief highlight + overflow-proof floating toast shown when copying LaTeX source */
+.latex-on-x-copied {
+  background-color: rgba(29, 155, 240, 0.18);
+}
+
+.latex-on-x-copy-toast {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  border: none;
   background-color: #1d9bf0;
   color: #ffffff;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 11px;
   font-weight: 600;
   line-height: 1;
-  padding: 4px 8px;
+  padding: 5px 9px;
   border-radius: 9999px;
   white-space: nowrap;
   pointer-events: none;
-  z-index: 9999;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 2147483647;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 /* Discrete opt-in button bar for undelimited LaTeX / chemistry posts */

@@ -14,6 +14,7 @@ export const SOURCE_ATTR = "data-latex-source";
 export const RAW_ATTR = "data-latex-raw";
 export const LATEX_ATTR = "data-latex";
 export const COPIED_LABEL_ATTR = "data-copied-label";
+export const COPY_TOAST_ATTR = "data-latex-on-x-toast";
 export const BARE_BAR_ATTR = "data-latex-on-x-bar";
 export const BARE_BTN_ATTR = "data-latex-on-x-bare-toggle";
 
@@ -87,6 +88,7 @@ function shouldSkipNode(node: Node, boundary: Element): boolean {
         el.getAttribute("aria-hidden") === "true" ||
         el.getAttribute(RENDERED_ATTR) === "rendered" ||
         el.getAttribute(BARE_BAR_ATTR) === "true" ||
+        el.getAttribute(COPY_TOAST_ATTR) === "true" ||
         el.classList.contains("katex") ||
         el.classList.contains("sr-only")
       ) {
@@ -438,6 +440,84 @@ export function installInteractionHandlers(
   doc: Document = document,
   getOptions: () => ProcessOptions = () => ({})
 ): () => void {
+  type PopoverToastEl = HTMLElement & {
+    showPopover?: () => void;
+    hidePopover?: () => void;
+  };
+
+  let toastEl: PopoverToastEl | null = null;
+  let toastTimer: number | null = null;
+
+  const hideCopyToast = (): void => {
+    if (toastTimer !== null) {
+      window.clearTimeout(toastTimer);
+      toastTimer = null;
+    }
+    if (toastEl) {
+      try {
+        toastEl.hidePopover?.();
+      } catch {
+        // Ignore if popover is already closed or unsupported
+      }
+      toastEl.remove();
+      toastEl = null;
+    }
+  };
+
+  const showCopyToast = (formulaEl: Element): void => {
+    const opts = normalizeOptions(getOptions());
+    const label =
+      formulaEl.getAttribute(COPIED_LABEL_ATTR) ??
+      getMessages(opts.locale).copiedBadge;
+
+    const host = formulaEl.closest("dialog") ?? doc.body;
+    if (!host) return;
+
+    if (!toastEl) {
+      toastEl = doc.createElement("div") as PopoverToastEl;
+      toastEl.className = "latex-on-x-copy-toast";
+      toastEl.setAttribute(COPY_TOAST_ATTR, "true");
+      toastEl.setAttribute("role", "status");
+      toastEl.setAttribute("aria-live", "polite");
+      if (typeof toastEl.showPopover === "function") {
+        toastEl.setAttribute("popover", "manual");
+      }
+    }
+
+    toastEl.textContent = label;
+    if (toastEl.parentNode !== host) {
+      host.appendChild(toastEl);
+    }
+
+    const rect = formulaEl.getBoundingClientRect();
+    const viewportWidth = doc.defaultView?.innerWidth || 1024;
+    const centerX = Math.max(
+      64,
+      Math.min(viewportWidth - 64, rect.left + rect.width / 2)
+    );
+    const placeAbove = rect.top >= 36;
+    const top = placeAbove ? rect.top - 6 : rect.bottom + 6;
+
+    toastEl.style.left = `${Math.round(centerX)}px`;
+    toastEl.style.top = `${Math.round(top)}px`;
+    toastEl.style.transform = placeAbove
+      ? "translate(-50%, -100%)"
+      : "translateX(-50%)";
+
+    try {
+      toastEl.showPopover?.();
+    } catch {
+      // Fall back cleanly to fixed z-index positioning
+    }
+
+    if (toastTimer !== null) {
+      window.clearTimeout(toastTimer);
+    }
+    toastTimer = window.setTimeout(() => {
+      hideCopyToast();
+    }, 1200);
+  };
+
   const copyFromFormula = (formulaEl: Element, event: Event): void => {
     const latex = formulaEl.getAttribute(LATEX_ATTR);
     if (!latex) return;
@@ -450,6 +530,7 @@ export function installInteractionHandlers(
     });
 
     formulaEl.classList.add("latex-on-x-copied");
+    showCopyToast(formulaEl);
     window.setTimeout(() => {
       formulaEl.classList.remove("latex-on-x-copied");
     }, 1200);
@@ -516,6 +597,7 @@ export function installInteractionHandlers(
   doc.addEventListener("keydown", onKeyDown);
 
   return () => {
+    hideCopyToast();
     doc.removeEventListener("click", onClick);
     doc.removeEventListener("keydown", onKeyDown);
   };
