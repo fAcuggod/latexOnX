@@ -144,7 +144,7 @@ latexOnX/
 │   └── demo/            # Live local KaTeX + mhchem sandbox
 ├── public/              # manifest.json (MV3), icons & Chrome _locales
 ├── scripts/             # build.mjs, package.mjs, build-wasm.mjs & benchmark.mjs
-├── tests/               # 133 automated Vitest unit, DOM & WASM equivalence tests
+├── tests/               # 135 automated Vitest unit, DOM & WASM equivalence tests
 └── docs/                # Architecture, TypeScript & Rust/WASM guides
 ```
 
@@ -168,7 +168,7 @@ Measured via `npm run bench` on **10,000 mixed X posts** (8,000 valid formulas, 
 
 ```bash
 npm run typecheck   # Strict TypeScript type checking (tsc --noEmit)
-npm test            # Run all 133 Vitest unit, DOM & WASM equivalence tests
+npm test            # Run all 135 Vitest unit, DOM & WASM equivalence tests
 npm run test:rust   # Run all 21 native Rust unit tests (cargo test)
 npm run build:wasm  # Recompile crates/latex-core -> src/wasm/latex_core.wasm
 npm run bench       # Run TypeScript vs. Rust/WASM benchmark over 10,000 posts

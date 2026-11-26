@@ -1,8 +1,10 @@
 import {
+  analyzeBareLatexDraft,
   analyzeComposerDraft,
   convertDisplayHintToInline,
   createDebouncer,
   findInlineDisplayHints,
+  wrapBareLatexDraft,
   type ComposerDiagnostic,
   type Debouncer,
   type InlineDisplayHint,
@@ -697,12 +699,26 @@ export function createComposerPreviewController(
     const suggestions =
       !catalogOpen && acCtx ? searchFormulaCatalog(acCtx, locale, 5) : [];
 
+    const isTypingSingleBareCommand =
+      suggestions.length > 0 &&
+      acCtx?.mode === "command" &&
+      text.slice(0, acCtx.replaceStart).trim().length === 0 &&
+      text.slice(acCtx.replaceEnd).trim().length === 0;
+
+    const bareDraft =
+      !analysis.shouldShowPreview && !isTypingSingleBareCommand
+        ? analyzeBareLatexDraft(text, { enableChemistry })
+        : null;
+
     const plainMaths =
-      suggestions.length === 0 ? detectPlainMathExpressions(text) : [];
+      suggestions.length === 0 && bareDraft === null
+        ? detectPlainMathExpressions(text)
+        : [];
     const hasPlainMaths = plainMaths.length > 0;
 
     if (
       !analysis.shouldShowPreview &&
+      bareDraft === null &&
       suggestions.length === 0 &&
       !hasPlainMaths &&
       !catalogOpen
@@ -740,6 +756,7 @@ export function createComposerPreviewController(
 
     let renderedFormulaCount = 0;
     let hasPreviewBody = false;
+    let hasBareLatexPreview = false;
 
     const appendTextChunkWithPlainMath = (
       chunk: string,
@@ -855,6 +872,53 @@ export function createComposerPreviewController(
           return;
         }
       }
+    } else if (bareDraft !== null) {
+      const bareErroredIndices = new Set<number>();
+      for (const diag of bareDraft.diagnostics) {
+        if (diag.kind === "validation_error") {
+          bareErroredIndices.add(diag.formulaIndex);
+        }
+      }
+
+      let bareIdx = 0;
+      for (const seg of bareDraft.segments) {
+        if (seg.type === "text") {
+          bodyEl.appendChild(doc.createTextNode(seg.content));
+        } else {
+          const currentIdx = bareIdx;
+          bareIdx += 1;
+
+          if (bareErroredIndices.has(currentIdx)) {
+            bodyEl.appendChild(doc.createTextNode(seg.raw));
+            continue;
+          }
+
+          const wrapper = doc.createElement("span");
+          const result = renderFormulaToElement(seg.content, seg.mode, wrapper, {
+            enableChemistry,
+          });
+          if (result.ok) {
+            renderedFormulaCount += 1;
+            wrapper.className =
+              seg.mode === "display"
+                ? "latex-on-x-formula latex-on-x-display"
+                : "latex-on-x-formula latex-on-x-inline";
+            bodyEl.appendChild(wrapper);
+          } else {
+            bodyEl.appendChild(doc.createTextNode(seg.raw));
+          }
+        }
+      }
+
+      if (renderedFormulaCount > 0) {
+        hasPreviewBody = true;
+        hasBareLatexPreview = true;
+      } else if (!catalogOpen && suggestions.length === 0) {
+        clearSuggestions();
+        hidePanel();
+        showLauncherForComposer(activeComposer, currentTheme, locale);
+        return;
+      }
     }
 
     const allDiagnostics = [...analysis.diagnostics, ...extraKatexErrors];
@@ -891,6 +955,11 @@ export function createComposerPreviewController(
             : `✓ ${msg.previewReadyPlural.replace("{n}", String(analysis.formulaCount))}`;
       }
       titleGroup.appendChild(badgeEl);
+    } else if (hasBareLatexPreview && hasPreviewBody) {
+      const badgeEl = doc.createElement("span");
+      badgeEl.className = "latex-on-x-preview-badge is-plain";
+      badgeEl.textContent = msg.bareDraftBadge;
+      titleGroup.appendChild(badgeEl);
     } else if (hasPlainMaths && hasPreviewBody) {
       const badgeEl = doc.createElement("span");
       badgeEl.className = "latex-on-x-preview-badge is-plain";
@@ -906,7 +975,19 @@ export function createComposerPreviewController(
     const actionsGroup = doc.createElement("div");
     actionsGroup.className = "latex-on-x-preview-actions";
 
-    if (hasPlainMaths && hasPreviewBody) {
+    if (hasBareLatexPreview && hasPreviewBody) {
+      const wrapBtn = doc.createElement("button");
+      wrapBtn.type = "button";
+      wrapBtn.className = "latex-on-x-preview-convert";
+      wrapBtn.setAttribute("aria-label", msg.wrapDelimitersTooltip);
+      wrapBtn.setAttribute("title", msg.wrapDelimitersTooltip);
+      wrapBtn.textContent = msg.wrapDelimitersBtn;
+      wrapBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        acceptBareLatexWrap();
+      });
+      actionsGroup.appendChild(wrapBtn);
+    } else if (hasPlainMaths && hasPreviewBody) {
       const convertBtn = doc.createElement("button");
       convertBtn.type = "button";
       convertBtn.className = "latex-on-x-preview-convert";
@@ -1453,6 +1534,23 @@ export function createComposerPreviewController(
     clearSuggestions();
     debouncer?.cancel();
     writeComposerValue(activeComposer, nextText, cursorPos, lastWrapped);
+    lastSelection = { start: cursorPos, end: cursorPos };
+    renderPreviewNow();
+  };
+
+  const acceptBareLatexWrap = (): void => {
+    if (!activeComposer || !activeComposer.isConnected) return;
+    const enableChemistry = getOptions().enableChemistry ?? true;
+    const currentText = readComposerText(activeComposer);
+    const { text: nextText, cursorPos, inserted } = wrapBareLatexDraft(
+      currentText,
+      { enableChemistry }
+    );
+    if (nextText === currentText) return;
+
+    clearSuggestions();
+    debouncer?.cancel();
+    writeComposerValue(activeComposer, nextText, cursorPos, inserted);
     lastSelection = { start: cursorPos, end: cursorPos };
     renderPreviewNow();
   };

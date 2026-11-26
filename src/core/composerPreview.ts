@@ -1,4 +1,8 @@
-import { usesChemistryCommands } from "./detector.js";
+import {
+  hasBareLatex,
+  parseBareLatexSegments,
+  usesChemistryCommands,
+} from "./detector.js";
 import { DELIMITERS, parseMathSegments } from "./parser.js";
 import type { Segment, ValidationReason } from "./types.js";
 import { validateLatex, type ValidationLimits } from "./validator.js";
@@ -355,4 +359,96 @@ export function convertDisplayHintToInline(
     cursorPos: hint.start + hint.inlineReplacement.length,
   };
 }
+
+export interface BareLatexDraftPreview {
+  segments: Segment[];
+  formulaCount: number;
+  diagnostics: ComposerDiagnostic[];
+}
+
+/**
+ * Analyzes a composer draft containing undelimited raw LaTeX or chemistry
+ * (e.g. a formula copied from the feed and pasted directly into a reply).
+ * Returns `null` if the draft already has explicit or unclosed delimiters,
+ * or if no strong bare LaTeX/chemistry command is detected.
+ */
+export function analyzeBareLatexDraft(
+  text: string,
+  options?: ComposerAnalyzeOptions
+): BareLatexDraftPreview | null {
+  const enableChemistry = options?.enableChemistry ?? true;
+  if (!text.includes("\\")) return null;
+  if (findUnclosedDelimiter(text) !== null) return null;
+  if (!hasBareLatex(text, { includeChemistry: enableChemistry })) return null;
+
+  const segments = parseBareLatexSegments(text, {
+    includeChemistry: enableChemistry,
+  });
+  let formulaCount = 0;
+  const diagnostics: ComposerDiagnostic[] = [];
+
+  for (const segment of segments) {
+    if (segment.type === "math") {
+      const formulaIndex = formulaCount;
+      formulaCount += 1;
+
+      const validation = validateLatex(segment.content, options?.limits);
+      if (!validation.ok) {
+        diagnostics.push({
+          kind: "validation_error",
+          formulaIndex,
+          reason: validation.reason,
+          message: validation.message,
+          raw: segment.raw,
+        });
+      }
+    }
+  }
+
+  if (formulaCount === 0) return null;
+
+  return {
+    segments,
+    formulaCount,
+    diagnostics,
+  };
+}
+
+/**
+ * Wraps every bare LaTeX or chemistry segment in standard explicit delimiters
+ * (`$$...$$` for display lines, `\(...\)` for inline chemistry) while preserving
+ * all surrounding prose verbatim.
+ */
+export function wrapBareLatexDraft(
+  text: string,
+  options?: { enableChemistry?: boolean }
+): { text: string; cursorPos: number; inserted: string } {
+  const enableChemistry = options?.enableChemistry ?? true;
+  if (!hasBareLatex(text, { includeChemistry: enableChemistry })) {
+    return { text, cursorPos: text.length, inserted: "" };
+  }
+
+  const segments = parseBareLatexSegments(text, {
+    includeChemistry: enableChemistry,
+  });
+
+  let out = "";
+  let cursorPos = text.length;
+  let lastWrapped = "";
+
+  for (const seg of segments) {
+    if (seg.type === "text") {
+      out += seg.content;
+    } else {
+      const wrapped =
+        seg.mode === "display" ? `$$${seg.content}$$` : `\\(${seg.content}\\)`;
+      out += wrapped;
+      cursorPos = out.length;
+      lastWrapped = wrapped;
+    }
+  }
+
+  return { text: out, cursorPos, inserted: lastWrapped };
+}
+
 

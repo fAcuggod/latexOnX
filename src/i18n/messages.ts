@@ -49,6 +49,9 @@ export interface Messages {
   plainMathBadge: string;
   convertLatexBtn: string;
   convertLatexTooltip: string;
+  bareDraftBadge: string;
+  wrapDelimitersBtn: string;
+  wrapDelimitersTooltip: string;
   inlineDisplayTip: string;
   switchToInlineBtn: string;
   symbolBarLabel: string;
@@ -115,6 +118,9 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     plainMathBadge: "Plain math",
     convertLatexBtn: "Convert to LaTeX",
     convertLatexTooltip: "Convert plain math to LaTeX (Tab)",
+    bareDraftBadge: "Undelimited",
+    wrapDelimitersBtn: "Add delimiters",
+    wrapDelimitersTooltip: "Wrap formulas in $$...$$ or \\(...\\) delimiters",
     inlineDisplayTip: "{raw} is in block mode (new line).",
     switchToInlineBtn: "Use inline \\(...\\)",
     symbolBarLabel: "Quick LaTeX symbols",
@@ -179,6 +185,9 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     plainMathBadge: "Matemática natural",
     convertLatexBtn: "Convertir a LaTeX",
     convertLatexTooltip: "Convertir a LaTeX (Tab)",
+    bareDraftBadge: "Sin delimitadores",
+    wrapDelimitersBtn: "Agregar delimitadores",
+    wrapDelimitersTooltip: "Envolver fórmulas con delimitadores $$...$$ o \\(...\\)",
     inlineDisplayTip: "{raw} está en modo bloque (salta de línea).",
     switchToInlineBtn: "Pasar a en línea \\(...\\)",
     symbolBarLabel: "Símbolos rápidos de LaTeX",
@@ -243,6 +252,9 @@ export const MESSAGES: Readonly<Record<Locale, Messages>> = {
     plainMathBadge: "自然数学",
     convertLatexBtn: "转为 LaTeX",
     convertLatexTooltip: "转为 LaTeX 格式 (Tab)",
+    bareDraftBadge: "无定界符",
+    wrapDelimitersBtn: "添加定界符",
+    wrapDelimitersTooltip: "用 $$...$$ 或 \\(...\\) 定界符包裹公式",
     inlineDisplayTip: "{raw} 为块级公式（会自动换行）。",
     switchToInlineBtn: "改为行内 \\(...\\)",
     symbolBarLabel: "常用 LaTeX 符号",

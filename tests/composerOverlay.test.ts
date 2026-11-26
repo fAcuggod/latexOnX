@@ -688,7 +688,73 @@ describe("composerOverlay (Milestone B.2)", () => {
       }
     }
   });
+
+  it("previews pasted undelimited LaTeX live in the composer (even with Catalog open) and wraps delimiters in one click", () => {
+    vi.useFakeTimers();
+
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+
+    const controller = createComposerPreviewController(document, () => ({
+      locale: "es",
+      enableChemistry: true,
+      debounceMs: 50,
+    }));
+    controller.start();
+
+    const pasted =
+      "\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s} = 1 + \\frac{1}{2^s} + \\frac{1}{3^s} + \\frac{1}{4^s} + \\cdots";
+    textarea.value = pasted;
+    textarea.setSelectionRange(pasted.length, pasted.length);
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+
+    const panel = document.querySelector(
+      `[${PREVIEW_PANEL_ATTR}="true"]`
+    ) as HTMLElement;
+    expect(panel).not.toBeNull();
+    expect(panel.style.display).toBe("block");
+    expect(panel.querySelector(".latex-on-x-preview-body .katex")).not.toBeNull();
+    expect(panel.textContent).toContain("Sin delimitadores");
+    expect(panel.querySelector(".latex-on-x-preview-export")).not.toBeNull();
+
+    // Opening the Catalog keeps the rendered KaTeX preview visible above the catalog
+    const catalogBtn = panel.querySelector(
+      ".latex-on-x-preview-catalog-toggle"
+    ) as HTMLButtonElement;
+    expect(catalogBtn).not.toBeNull();
+    catalogBtn.click();
+    expect(panel.querySelector(".latex-on-x-preview-body .katex")).not.toBeNull();
+    expect(panel.querySelector(".latex-on-x-catalog")).not.toBeNull();
+
+    // Clicking "Agregar delimitadores" wraps the formula in $$...$$ and switches to ready state
+    const wrapBtn = panel.querySelector(
+      ".latex-on-x-preview-convert"
+    ) as HTMLButtonElement;
+    expect(wrapBtn).not.toBeNull();
+    expect(wrapBtn.textContent).toBe("Agregar delimitadores");
+    wrapBtn.click();
+
+    expect(textarea.value).toBe(`$$${pasted}$$`);
+    expect(panel.textContent).toContain("1 fórmula lista");
+
+    // Close catalog, then typing a single bare command alone still triggers autocomplete instead of bare preview
+    const closeCatalogBtn = panel.querySelector(
+      ".latex-on-x-preview-catalog-toggle"
+    ) as HTMLButtonElement;
+    closeCatalogBtn.click();
+
+    textarea.value = "\\sum";
+    textarea.setSelectionRange(4, 4);
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    vi.advanceTimersByTime(60);
+
+    expect(panel.querySelector(".latex-on-x-preview-body")).toBeNull();
+    expect(panel.querySelectorAll(".latex-on-x-suggestion-item").length).toBeGreaterThan(0);
+
+    controller.stop();
+  });
 });
+
 
 
 

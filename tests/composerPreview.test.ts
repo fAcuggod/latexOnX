@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  analyzeBareLatexDraft,
   analyzeComposerDraft,
   convertDisplayHintToInline,
   createDebouncer,
   findInlineDisplayHints,
   findUnclosedDelimiter,
+  wrapBareLatexDraft,
 } from "../src/core/composerPreview.js";
 
 afterEach(() => {
@@ -235,4 +237,29 @@ describe("findInlineDisplayHints & convertDisplayHintToInline (v1.3)", () => {
     expect(findInlineDisplayHints("restando \\[1\\] a ambos lados")).toEqual([]);
   });
 });
+
+describe("analyzeBareLatexDraft & wrapBareLatexDraft (v1.5)", () => {
+  it("detects pasted undelimited LaTeX/chemistry and wraps it cleanly in standard delimiters", () => {
+    const pasted =
+      "\\zeta(s) = \\sum_{n=1}^{\\infty} \\frac{1}{n^s} = 1 + \\frac{1}{2^s} + \\frac{1}{3^s} + \\frac{1}{4^s} + \\cdots";
+    const analyzed = analyzeBareLatexDraft(pasted);
+    expect(analyzed).not.toBeNull();
+    expect(analyzed?.formulaCount).toBe(1);
+    expect(analyzed?.diagnostics).toEqual([]);
+
+    const wrapped = wrapBareLatexDraft(pasted);
+    expect(wrapped.text).toBe(`$$${pasted}$$`);
+
+    // Inline chemistry preserves surrounding prose
+    const chem = "Reaction: \\ce{2H2 + O2 -> 2H2O}!";
+    expect(analyzeBareLatexDraft(chem)?.formulaCount).toBe(1);
+    expect(wrapBareLatexDraft(chem).text).toBe("Reaction: \\(\\ce{2H2 + O2 -> 2H2O}\\)!");
+
+    // Already-delimited or unclosed drafts yield null
+    expect(analyzeBareLatexDraft("$$\\frac{1}{2}$$")).toBeNull();
+    expect(analyzeBareLatexDraft("$$\\frac{1}{2}")).toBeNull();
+    expect(analyzeBareLatexDraft("Plain text without math")).toBeNull();
+  });
+});
+
 
